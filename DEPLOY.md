@@ -93,3 +93,6 @@ Your app is live at: https://aura-frontend.onrender.com
   (first request after sleep takes ~30 seconds)
 - To keep it awake use UptimeRobot (free) to ping your backend every 10 min
 - Free PostgreSQL on Render expires after 90 days (then recreate it)
+
+
+ok done
