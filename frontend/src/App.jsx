@@ -138,7 +138,22 @@ export default function App() {
 
   // ── SEND ──
   async function send() {
-    if (!input.trim() || loading || !activeConv) return;
+    if (!input.trim() || loading) return;
+
+    // auto create conversation if none active
+    let conv = activeConv;
+    if (!conv) {
+      try {
+        conv = await apiFetch("/conversations", { method: "POST", body: JSON.stringify({ title: "New Chat" }) }, token);
+        setConversations(prev => [conv, ...prev]);
+        setActiveConv(conv);
+        setMessages([]);
+      } catch(e) {
+        alert("Could not create conversation: " + e.message);
+        return;
+      }
+    }
+
     const text = input.trim();
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: text, id: Date.now() }]);
@@ -146,14 +161,13 @@ export default function App() {
     try {
       const data = await apiFetch("/chat", {
         method: "POST",
-        body: JSON.stringify({ message: text, conversationId: activeConv.id }),
+        body: JSON.stringify({ message: text, conversationId: conv.id }),
       }, token);
       setMood(data.mood || "default");
       setMessages(prev => [...prev, { role: "assistant", content: data.answer, mood: data.mood, mood_label: data.moodLabel, id: Date.now() + 1 }]);
-      // refresh sidebar titles
       apiFetch("/conversations", {}, token).then(setConversations);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Something went wrong.", id: Date.now() + 1 }]);
+    } catch(e) {
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Error: " + e.message, id: Date.now() + 1 }]);
     }
     setLoading(false);
   }
