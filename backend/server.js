@@ -149,12 +149,27 @@ After your answer, on a NEW LINE return ONLY this JSON (no extra text after it):
 Pick the mood that best matches the emotional tone of the conversation.`;
 
   // build messages array for Gemini
-  const contents = history.rows.map(m => ({
+  // Gemini needs alternating user/model, no consecutive same roles
+  const rawHistory = history.rows.map(m => ({
     role: m.role === 'user' ? 'user' : 'model',
     parts: [{ text: m.content }]
   }));
+  const contents = [];
+  let lastRole = null;
+  for (const msg of rawHistory) {
+    if (msg.role === lastRole) {
+      contents[contents.length - 1].parts[0].text += '\n' + msg.parts[0].text;
+    } else {
+      contents.push({ role: msg.role, parts: [{ text: msg.parts[0].text }] });
+      lastRole = msg.role;
+    }
+  }
+  if (contents.length === 0 || contents[0].role !== 'user') {
+    contents.unshift({ role: 'user', parts: [{ text: message }] });
+  }
 
   try {
+    console.log('Calling Gemini API...');
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
@@ -169,7 +184,15 @@ Pick the mood that best matches the emotional tone of the conversation.`;
     );
 
     const data = await geminiRes.json();
+    console.log('Gemini response status:', geminiRes.status);
+
+    if (data.error) {
+      console.error('Gemini error:', data.error);
+      return res.status(500).json({ error: 'Gemini API error: ' + data.error.message });
+    }
+
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Raw response length:', raw.length);
 
     // extract JSON mood
     const jsonMatch = raw.match(/\{[\s\S]*?"mood"[\s\S]*?\}/);
@@ -198,8 +221,8 @@ Pick the mood that best matches the emotional tone of the conversation.`;
 
     res.json({ answer, mood, moodLabel });
   } catch(e) {
-    console.error(e);
-    res.status(500).json({ error: 'AI error' });
+    console.error('Chat error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
