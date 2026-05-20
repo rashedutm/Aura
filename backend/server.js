@@ -145,8 +145,23 @@ app.post('/chat', auth, async (req, res) => {
   const systemPrompt = `You are AURA, a warm, insightful and expressive AI assistant.
 Answer the user's question thoughtfully and naturally.
 After your answer, on a NEW LINE return ONLY this JSON (no extra text after it):
-{"mood":"<one word: love,space,nature,ocean,fire,mystery,happy,sad,tech,food,music,default>","moodLabel":"<2-3 word friendly label like 'romantic vibes' or 'cosmic wonder'>"}
-Pick the mood that best matches the emotional tone of the conversation.`;
+{"mood":"<one word>","moodLabel":"<2-3 word label>"}
+
+MOOD RULES - pick the MOST fitting, avoid default unless truly neutral:
+- love → romance, relationships, feelings, dating, crush, heart
+- space → universe, stars, planets, astronomy, cosmos, galaxy
+- nature → plants, animals, environment, forest, earth, trees
+- ocean → water, sea, beach, waves, marine, fish, sailing
+- fire → motivation, energy, passion, anger, heat, excitement, hustle
+- mystery → secrets, unknown, paranormal, conspiracy, thriller, crime
+- happy → joy, celebration, fun, humor, comedy, party, games
+- sad → grief, loss, depression, loneliness, heartbreak, pain
+- tech → coding, computers, AI, software, hardware, programming, internet
+- food → eating, cooking, recipes, restaurants, cuisine, drink
+- music → songs, artists, concerts, instruments, genres, lyrics
+- default → ONLY for truly generic or unclear questions
+
+Always pick a specific mood. Be decisive!`;
 
   // build messages array for Gemini
   // Gemini needs alternating user/model, no consecutive same roles

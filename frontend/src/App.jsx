@@ -2,23 +2,21 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-// ── MOOD CONFIG ──
 const MOODS = {
-  default:  { colors: ["#1a0533","#001a3a","#0d1a00"], border: "#7c6aff", emoji: "✨" },
-  love:     { colors: ["#3a0020","#1a0015","#2a001a"], border: "#ff69b4", emoji: "💕" },
-  space:    { colors: ["#000510","#050020","#001020"], border: "#4fc3f7", emoji: "⭐" },
-  nature:   { colors: ["#001a00","#0a2000","#001500"], border: "#4caf50", emoji: "🍃" },
-  ocean:    { colors: ["#001a2a","#00102a","#001520"], border: "#0288d1", emoji: "🌊" },
-  fire:     { colors: ["#2a0500","#1a0a00","#200800"], border: "#ff6d00", emoji: "🔥" },
-  mystery:  { colors: ["#0d0020","#100015","#050010"], border: "#9c27b0", emoji: "🔮" },
-  happy:    { colors: ["#1a1500","#201a00","#151000"], border: "#ffd600", emoji: "🌟" },
-  sad:      { colors: ["#000a1a","#00051a","#000510"], border: "#5c6bc0", emoji: "🌧️" },
-  tech:     { colors: ["#001a10","#00100a","#001505"], border: "#00e676", emoji: "💻" },
-  food:     { colors: ["#1a0a00","#150800","#200d00"], border: "#ff8f00", emoji: "🍕" },
-  music:    { colors: ["#1a001a","#150015","#100010"], border: "#e040fb", emoji: "🎵" },
+  default:  { c1:"#0d0d2b", c2:"#1a1040", c3:"#0d1a2b", border:"#7c6aff", glow:"124,106,255", emoji:"✨" },
+  love:     { c1:"#2a0015", c2:"#1a000d", c3:"#3a0020", border:"#ff4d8f", glow:"255,77,143",  emoji:"💕" },
+  space:    { c1:"#00050f", c2:"#000520", c3:"#001030", border:"#00cfff", glow:"0,207,255",   emoji:"⭐" },
+  nature:   { c1:"#001a05", c2:"#0a2010", c3:"#002010", border:"#39d353", glow:"57,211,83",  emoji:"🍃" },
+  ocean:    { c1:"#001828", c2:"#001020", c3:"#002030", border:"#00b4d8", glow:"0,180,216",  emoji:"🌊" },
+  fire:     { c1:"#200800", c2:"#300500", c3:"#180a00", border:"#ff6200", glow:"255,98,0",   emoji:"🔥" },
+  mystery:  { c1:"#0d0020", c2:"#150010", c3:"#05001a", border:"#bf5fff", glow:"191,95,255", emoji:"🔮" },
+  happy:    { c1:"#1a1500", c2:"#201800", c3:"#150f00", border:"#ffd500", glow:"255,213,0",  emoji:"🌟" },
+  sad:      { c1:"#000818", c2:"#000510", c3:"#000a20", border:"#4a6fa5", glow:"74,111,165", emoji:"🌧️" },
+  tech:     { c1:"#001510", c2:"#00100a", c3:"#001a10", border:"#00ff9d", glow:"0,255,157",  emoji:"💻" },
+  food:     { c1:"#1a0800", c2:"#200a00", c3:"#150600", border:"#ff8800", glow:"255,136,0",  emoji:"🍕" },
+  music:    { c1:"#1a001a", c2:"#100010", c3:"#200020", border:"#e040fb", glow:"224,64,251", emoji:"🎵" },
 };
 
-// ── API HELPER ──
 async function apiFetch(path, opts = {}, token) {
   const res = await fetch(API + path, {
     ...opts,
@@ -34,90 +32,79 @@ async function apiFetch(path, opts = {}, token) {
 }
 
 export default function App() {
-  const [token, setToken]               = useState(() => localStorage.getItem("aura_token"));
-  const [username, setUsername]         = useState(() => localStorage.getItem("aura_user"));
-  const [authMode, setAuthMode]         = useState("login");
-  const [authForm, setAuthForm]         = useState({ username: "", password: "" });
-  const [authError, setAuthError]       = useState("");
+  const [token, setToken]       = useState(() => localStorage.getItem("aura_token"));
+  const [username, setUsername] = useState(() => localStorage.getItem("aura_user"));
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({ username: "", password: "" });
+  const [authError, setAuthError] = useState("");
   const [conversations, setConversations] = useState([]);
-  const [activeConv, setActiveConv]     = useState(null);
-  const [messages, setMessages]         = useState([]);
-  const [input, setInput]               = useState("");
-  const [loading, setLoading]           = useState(false);
-  const [mood, setMood]                 = useState("default");
-  const [sidebarOpen, setSidebarOpen]   = useState(true);
-  const chatRef  = useRef(null);
+  const [activeConv, setActiveConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mood, setMood] = useState("default");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const chatRef = useRef(null);
   const inputRef = useRef(null);
   const particlesRef = useRef(null);
   const particleTimer = useRef(null);
 
-  const currentMood = MOODS[mood] || MOODS.default;
+  const m = MOODS[mood] || MOODS.default;
 
-  // ── PARTICLES ──
+  // particles
   const spawnParticle = useCallback(() => {
     if (!particlesRef.current) return;
     const p = document.createElement("div");
+    const size = Math.random() * 1.4 + 0.7;
+    const dur = Math.random() * 5 + 6;
     p.style.cssText = `
-      position:absolute; bottom:-60px; user-select:none; pointer-events:none;
-      font-size:${Math.random()*1.2+0.7}rem;
-      left:${Math.random()*100}%;
-      animation: floatUp ${Math.random()*4+5}s ${Math.random()*2}s linear forwards;
-      opacity:0;
+      position:absolute;bottom:-60px;pointer-events:none;user-select:none;
+      font-size:${size}rem;
+      left:${Math.random() * 95}%;
+      animation:floatUp ${dur}s ${Math.random() * 2}s linear forwards;
+      opacity:0;filter:drop-shadow(0 0 6px rgba(${m.glow},0.8));
     `;
-    p.textContent = currentMood.emoji;
+    p.textContent = m.emoji;
     particlesRef.current.appendChild(p);
-    setTimeout(() => p.remove(), 9000);
-  }, [currentMood.emoji]);
+    setTimeout(() => p.remove(), (dur + 3) * 1000);
+  }, [m.emoji, m.glow]);
 
   useEffect(() => {
     clearInterval(particleTimer.current);
-    particleTimer.current = setInterval(spawnParticle, 700);
+    particleTimer.current = setInterval(spawnParticle, 800);
     return () => clearInterval(particleTimer.current);
   }, [spawnParticle]);
 
-  // ── SCROLL ──
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  // ── LOAD CONVERSATIONS ──
   useEffect(() => {
     if (!token) return;
-    apiFetch("/conversations", {}, token)
-      .then(setConversations)
-      .catch(() => {});
+    apiFetch("/conversations", {}, token).then(setConversations).catch(() => {});
   }, [token]);
 
-  // ── LOAD MESSAGES ──
   useEffect(() => {
     if (!activeConv || !token) return;
     apiFetch(`/conversations/${activeConv.id}/messages`, {}, token)
       .then(msgs => {
         setMessages(msgs);
-        if (msgs.length > 0) {
-          const last = msgs.filter(m => m.role === "assistant").pop();
-          if (last?.mood) setMood(last.mood);
-        }
-      })
-      .catch(() => {});
+        const last = msgs.filter(m => m.role === "assistant").pop();
+        if (last?.mood) setMood(last.mood);
+      }).catch(() => {});
   }, [activeConv, token]);
 
-  // ── AUTH ──
   async function handleAuth(e) {
     e.preventDefault();
     setAuthError("");
     try {
-      const data = await apiFetch(`/${authMode}`, {
-        method: "POST",
-        body: JSON.stringify(authForm),
-      });
+      const data = await apiFetch(`/${authMode}`, { method: "POST", body: JSON.stringify(authForm) });
       localStorage.setItem("aura_token", data.token);
       localStorage.setItem("aura_user", data.username);
       setToken(data.token);
       setUsername(data.username);
-    } catch (err) {
-      setAuthError(err.message);
-    }
+    } catch (err) { setAuthError(err.message); }
   }
 
   function logout() {
@@ -127,35 +114,28 @@ export default function App() {
     setConversations([]); setActiveConv(null); setMessages([]);
   }
 
-  // ── NEW CHAT ──
   async function newChat() {
-    const conv = await apiFetch("/conversations", { method: "POST", body: JSON.stringify({ title: "New Chat" }) }, token);
-    setConversations(prev => [conv, ...prev]);
-    setActiveConv(conv);
-    setMessages([]);
-    setMood("default");
+    try {
+      const conv = await apiFetch("/conversations", { method: "POST", body: JSON.stringify({ title: "New Chat" }) }, token);
+      setConversations(prev => [conv, ...prev]);
+      setActiveConv(conv);
+      setMessages([]);
+      setMood("default");
+      setSidebarOpen(false);
+      return conv;
+    } catch(e) { return null; }
   }
 
-  // ── SEND ──
   async function send() {
     if (!input.trim() || loading) return;
-
-    // auto create conversation if none active
     let conv = activeConv;
     if (!conv) {
-      try {
-        conv = await apiFetch("/conversations", { method: "POST", body: JSON.stringify({ title: "New Chat" }) }, token);
-        setConversations(prev => [conv, ...prev]);
-        setActiveConv(conv);
-        setMessages([]);
-      } catch(e) {
-        alert("Could not create conversation: " + e.message);
-        return;
-      }
+      conv = await newChat();
+      if (!conv) return;
     }
-
     const text = input.trim();
     setInput("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
     setMessages(prev => [...prev, { role: "user", content: text, id: Date.now() }]);
     setLoading(true);
     try {
@@ -167,12 +147,11 @@ export default function App() {
       setMessages(prev => [...prev, { role: "assistant", content: data.answer, mood: data.mood, mood_label: data.moodLabel, id: Date.now() + 1 }]);
       apiFetch("/conversations", {}, token).then(setConversations);
     } catch(e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Error: " + e.message, id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ " + e.message, id: Date.now() + 1 }]);
     }
     setLoading(false);
   }
 
-  // ── DELETE CONV ──
   async function deleteConv(id, e) {
     e.stopPropagation();
     await apiFetch(`/conversations/${id}`, { method: "DELETE" }, token);
@@ -180,29 +159,31 @@ export default function App() {
     if (activeConv?.id === id) { setActiveConv(null); setMessages([]); }
   }
 
-  // ── AUTH SCREEN ──
+  // AUTH SCREEN
   if (!token) return (
-    <div style={{ position: "relative", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d0d1a" }}>
-      <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse at 30% 40%, #1a0533 0%, transparent 55%), radial-gradient(ellipse at 70% 60%, #001a3a 0%, transparent 55%), #0d0d1a", animation: "bgPulse 8s ease-in-out infinite alternate" }} />
-      <div style={{ position: "relative", zIndex: 10, width: "min(400px, 90vw)", animation: "fadeUp 0.5s ease" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: "2.2rem", letterSpacing: "0.15em", background: "linear-gradient(135deg, #fff 30%, #7c6aff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AURA</div>
-          <div style={{ color: "var(--sub)", fontSize: "0.8rem", letterSpacing: "0.3em", marginTop: "0.2rem" }}>AMBIENT AI</div>
+    <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"fixed", inset:0, background:`radial-gradient(ellipse at 30% 40%, #1a0533 0%, transparent 55%), radial-gradient(ellipse at 70% 60%, #001a3a 0%, transparent 55%), #07070f`, animation:"bgPulse 8s ease-in-out infinite alternate" }} />
+      <div style={{ position:"fixed", inset:0, boxShadow:"inset 0 0 120px rgba(124,106,255,0.08)", border:"1px solid rgba(124,106,255,0.15)", pointerEvents:"none" }} />
+      <div style={{ position:"relative", zIndex:10, width:"min(400px,92vw)", animation:"fadeUp 0.5s ease" }}>
+        <div style={{ textAlign:"center", marginBottom:"2rem" }}>
+          <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"2.5rem", letterSpacing:"0.2em", background:"linear-gradient(135deg,#fff 20%,#7c6aff 60%,#c084fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
+          <div style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.7rem", letterSpacing:"0.4em", marginTop:"0.3rem" }}>AMBIENT AI</div>
         </div>
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "20px", padding: "2rem", backdropFilter: "blur(16px)" }}>
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
-            {["login","register"].map(m => (
-              <button key={m} onClick={() => { setAuthMode(m); setAuthError(""); }} style={{ flex: 1, padding: "0.6rem", borderRadius: "10px", border: "none", cursor: "pointer", fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "0.85rem", background: authMode === m ? "linear-gradient(135deg, #7c6aff, #c084fc)" : "rgba(255,255,255,0.05)", color: "#fff", transition: "all 0.2s" }}>
-                {m.charAt(0).toUpperCase() + m.slice(1)}
+        <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:"24px", padding:"2rem", backdropFilter:"blur(20px)" }}>
+          <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1.5rem", background:"rgba(0,0,0,0.2)", borderRadius:"12px", padding:"0.3rem" }}>
+            {["login","register"].map(mode => (
+              <button key={mode} onClick={() => { setAuthMode(mode); setAuthError(""); }} style={{ flex:1, padding:"0.6rem", borderRadius:"9px", border:"none", cursor:"pointer", fontFamily:"Syne,sans-serif", fontWeight:600, fontSize:"0.82rem", background: authMode===mode ? "linear-gradient(135deg,#7c6aff,#c084fc)" : "transparent", color: authMode===mode ? "#fff" : "rgba(255,255,255,0.4)", transition:"all 0.2s", letterSpacing:"0.05em" }}>
+                {mode === "login" ? "Sign In" : "Register"}
               </button>
             ))}
           </div>
-          <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-            <input value={authForm.username} onChange={e => setAuthForm(p => ({ ...p, username: e.target.value }))} placeholder="Username" style={{ padding: "0.8rem 1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "#fff", fontFamily: "DM Sans, sans-serif", fontSize: "0.9rem", outline: "none" }} />
-            <input type="password" value={authForm.password} onChange={e => setAuthForm(p => ({ ...p, password: e.target.value }))} placeholder="Password" style={{ padding: "0.8rem 1rem", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "#fff", fontFamily: "DM Sans, sans-serif", fontSize: "0.9rem", outline: "none" }} />
-            {authError && <div style={{ color: "#ff6b6b", fontSize: "0.82rem", textAlign: "center" }}>{authError}</div>}
-            <button type="submit" style={{ padding: "0.85rem", background: "linear-gradient(135deg, #7c6aff, #c084fc)", border: "none", borderRadius: "10px", color: "#fff", fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "0.95rem", cursor: "pointer", marginTop: "0.3rem" }}>
-              {authMode === "login" ? "Enter AURA →" : "Create Account →"}
+          <form onSubmit={handleAuth} style={{ display:"flex", flexDirection:"column", gap:"0.8rem" }}>
+            {["username","password"].map(field => (
+              <input key={field} type={field==="password"?"password":"text"} placeholder={field.charAt(0).toUpperCase()+field.slice(1)} value={authForm[field]} onChange={e => setAuthForm(p => ({...p,[field]:e.target.value}))} style={{ padding:"0.85rem 1rem", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:"12px", color:"#fff", fontFamily:"DM Sans,sans-serif", fontSize:"0.9rem", outline:"none", transition:"border-color 0.2s" }} onFocus={e => e.target.style.borderColor="rgba(124,106,255,0.6)"} onBlur={e => e.target.style.borderColor="rgba(255,255,255,0.09)"} />
+            ))}
+            {authError && <div style={{ color:"#ff6b8a", fontSize:"0.82rem", textAlign:"center", padding:"0.4rem", background:"rgba(255,107,138,0.1)", borderRadius:"8px" }}>{authError}</div>}
+            <button type="submit" style={{ padding:"0.9rem", background:"linear-gradient(135deg,#7c6aff,#c084fc)", border:"none", borderRadius:"12px", color:"#fff", fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.95rem", cursor:"pointer", marginTop:"0.3rem", letterSpacing:"0.05em", boxShadow:"0 4px 20px rgba(124,106,255,0.4)" }}>
+              {authMode==="login" ? "Enter AURA →" : "Create Account →"}
             </button>
           </form>
         </div>
@@ -210,124 +191,159 @@ export default function App() {
     </div>
   );
 
-  // ── MAIN APP ──
+  // MAIN APP
   return (
-    <div style={{ position: "relative", height: "100vh", display: "flex", overflow: "hidden" }}>
+    <div style={{ height:"100vh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
-      {/* BG */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, background: `radial-gradient(ellipse at 20% 50%, ${currentMood.colors[0]} 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, ${currentMood.colors[1]} 0%, transparent 60%), radial-gradient(ellipse at 50% 80%, ${currentMood.colors[2]} 0%, transparent 60%), #0d0d1a`, transition: "background 2.5s ease", animation: "bgPulse 8s ease-in-out infinite alternate" }} />
+      {/* ANIMATED BG */}
+      <div style={{ position:"fixed", inset:0, zIndex:0,
+        background:`radial-gradient(ellipse at 15% 50%, ${m.c1} 0%, transparent 55%), radial-gradient(ellipse at 85% 15%, ${m.c2} 0%, transparent 55%), radial-gradient(ellipse at 50% 85%, ${m.c3} 0%, transparent 55%), #07070f`,
+        transition:"background 3s ease", animation:"bgPulse 10s ease-in-out infinite alternate"
+      }} />
 
       {/* BORDER GLOW */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none", boxShadow: `inset 0 0 80px ${currentMood.border}12, 0 0 0 1.5px ${currentMood.border}40`, transition: "box-shadow 2.5s ease" }} />
+      <div style={{ position:"fixed", inset:0, zIndex:1, pointerEvents:"none",
+        boxShadow:`inset 0 0 100px rgba(${m.glow},0.08), inset 0 0 1px rgba(${m.glow},0.5)`,
+        border:`1px solid rgba(${m.glow},0.2)`,
+        transition:"all 3s ease"
+      }} />
+
+      {/* CORNER ACCENTS */}
+      {[{top:0,left:0},{top:0,right:0},{bottom:0,left:0},{bottom:0,right:0}].map((pos,i)=>(
+        <div key={i} style={{ position:"fixed", zIndex:2, pointerEvents:"none", width:"80px", height:"80px", ...pos,
+          background:`radial-gradient(circle at ${i<2?(i===0?"0% 0%":"100% 0%"):(i===2?"0% 100%":"100% 100%")}, rgba(${m.glow},0.15) 0%, transparent 70%)`,
+          transition:"all 3s ease"
+        }} />
+      ))}
 
       {/* PARTICLES */}
-      <div ref={particlesRef} style={{ position: "fixed", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden" }} />
+      <div ref={particlesRef} style={{ position:"fixed", inset:0, zIndex:2, pointerEvents:"none", overflow:"hidden" }} />
+
+      {/* SIDEBAR OVERLAY (mobile) */}
+      {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{ position:"fixed", inset:0, zIndex:20, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }} />}
 
       {/* SIDEBAR */}
-      <div style={{ position: "relative", zIndex: 10, width: sidebarOpen ? "260px" : "0", minWidth: sidebarOpen ? "260px" : "0", transition: "all 0.3s ease", overflow: "hidden", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(20px)", borderRight: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "1.2rem 1rem", display: "flex", flexDirection: "column", height: "100%" }}>
-          {/* logo */}
-          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: "1.3rem", letterSpacing: "0.15em", background: "linear-gradient(135deg, #fff 30%, #7c6aff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "1.2rem", paddingLeft: "0.3rem" }}>AURA</div>
+      <div style={{ position:"fixed", top:0, left:0, height:"100%", zIndex:30,
+        width: sidebarOpen ? "min(280px, 80vw)" : "0",
+        transition:"width 0.3s cubic-bezier(.4,0,.2,1)",
+        overflow:"hidden",
+        background:"rgba(7,7,15,0.95)",
+        backdropFilter:"blur(24px)",
+        borderRight:`1px solid rgba(${m.glow},0.15)`,
+        boxShadow: sidebarOpen ? `4px 0 40px rgba(0,0,0,0.5)` : "none"
+      }}>
+        <div style={{ width:"min(280px,80vw)", height:"100%", display:"flex", flexDirection:"column", padding:"1.2rem 1rem" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.2rem" }}>
+            <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"1.2rem", letterSpacing:"0.15em", background:`linear-gradient(135deg,#fff,#${m.border.slice(1)})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
+            <button onClick={()=>setSidebarOpen(false)} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.4)", cursor:"pointer", fontSize:"1.3rem", lineHeight:1 }}>×</button>
+          </div>
 
-          {/* new chat */}
-          <button onClick={newChat} style={{ width: "100%", padding: "0.7rem", background: "linear-gradient(135deg, #7c6aff22, #c084fc22)", border: "1px solid #7c6aff44", borderRadius: "10px", color: "#fff", fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "0.82rem", cursor: "pointer", marginBottom: "1rem", letterSpacing: "0.05em" }}>
+          <button onClick={newChat} style={{ width:"100%", padding:"0.75rem", background:`linear-gradient(135deg, rgba(${m.glow},0.2), rgba(${m.glow},0.08))`, border:`1px solid rgba(${m.glow},0.3)`, borderRadius:"12px", color:"#fff", fontFamily:"Syne,sans-serif", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", marginBottom:"1rem", letterSpacing:"0.05em", transition:"all 0.2s" }}>
             + New Chat
           </button>
 
-          {/* conversations */}
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+          <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:"0.25rem" }}>
             {conversations.map(c => (
-              <div key={c.id} onClick={() => setActiveConv(c)} style={{ padding: "0.65rem 0.8rem", borderRadius: "8px", cursor: "pointer", background: activeConv?.id === c.id ? "rgba(124,106,255,0.2)" : "transparent", border: activeConv?.id === c.id ? "1px solid rgba(124,106,255,0.3)" : "1px solid transparent", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.15s", gap: "0.5rem" }}>
-                <span style={{ fontSize: "0.8rem", color: activeConv?.id === c.id ? "#fff" : "var(--sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>💬 {c.title}</span>
-                <span onClick={e => deleteConv(c.id, e)} style={{ color: "var(--sub)", fontSize: "0.9rem", opacity: 0.5, flexShrink: 0, lineHeight: 1 }}>×</span>
+              <div key={c.id} onClick={()=>{ setActiveConv(c); setSidebarOpen(false); }} style={{ padding:"0.65rem 0.75rem", borderRadius:"10px", cursor:"pointer", background: activeConv?.id===c.id ? `rgba(${m.glow},0.18)` : "transparent", border: activeConv?.id===c.id ? `1px solid rgba(${m.glow},0.3)` : "1px solid transparent", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.5rem", transition:"all 0.15s" }}>
+                <span style={{ fontSize:"0.78rem", color: activeConv?.id===c.id ? "#fff" : "rgba(255,255,255,0.45)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>💬 {c.title}</span>
+                <span onClick={e=>deleteConv(c.id,e)} style={{ color:"rgba(255,255,255,0.25)", fontSize:"1rem", flexShrink:0, lineHeight:1, cursor:"pointer" }}>×</span>
               </div>
             ))}
-            {conversations.length === 0 && <div style={{ color: "var(--sub)", fontSize: "0.78rem", textAlign: "center", marginTop: "1rem", opacity: 0.6 }}>No conversations yet</div>}
+            {conversations.length===0 && <div style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.75rem", textAlign:"center", marginTop:"1rem" }}>No conversations yet</div>}
           </div>
 
-          {/* user */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.8rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg, #7c6aff, #c084fc)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontFamily: "Syne, sans-serif", fontWeight: 700 }}>{username?.[0]?.toUpperCase()}</div>
-              <span style={{ fontSize: "0.82rem", color: "var(--sub)" }}>{username}</span>
+          <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:"0.8rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+              <div style={{ width:"30px", height:"30px", borderRadius:"50%", background:`linear-gradient(135deg,#7c6aff,#c084fc)`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"0.75rem", color:"#fff" }}>{username?.[0]?.toUpperCase()}</div>
+              <span style={{ fontSize:"0.8rem", color:"rgba(255,255,255,0.5)" }}>{username}</span>
             </div>
-            <button onClick={logout} style={{ background: "none", border: "none", color: "var(--sub)", cursor: "pointer", fontSize: "0.75rem", opacity: 0.7 }}>out</button>
+            <button onClick={logout} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"6px", color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:"0.72rem", padding:"0.3rem 0.6rem" }}>out</button>
           </div>
         </div>
       </div>
 
-      {/* MAIN */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 10 }}>
+      {/* MAIN CONTENT */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", zIndex:10, minWidth:0 }}>
 
         {/* HEADER */}
-        <div style={{ padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <button onClick={() => setSidebarOpen(p => !p)} style={{ background: "none", border: "none", color: "var(--sub)", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1 }}>☰</button>
-          <div style={{ flex: 1, fontFamily: "Syne, sans-serif", fontSize: "0.9rem", fontWeight: 600, color: "var(--sub)" }}>{activeConv?.title || "AURA — Ambient AI"}</div>
-          {mood !== "default" && <div style={{ fontSize: "0.72rem", color: currentMood.border, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.8 }}>✦ {mood} mode</div>}
-          <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#4fffb0", boxShadow: "0 0 8px #4fffb0", animation: "pulse 2s ease-in-out infinite" }} />
+        <div style={{ padding:"0.9rem 1rem", display:"flex", alignItems:"center", gap:"0.8rem", borderBottom:"1px solid rgba(255,255,255,0.05)", backdropFilter:"blur(10px)", background:"rgba(7,7,15,0.6)", flexShrink:0 }}>
+          <button onClick={()=>setSidebarOpen(true)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:"0.4rem 0.5rem", flexShrink:0 }}>☰</button>
+          <div style={{ flex:1, fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.85rem", color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{activeConv?.title || "AURA"}</div>
+          {mood!=="default" && <div style={{ fontSize:"0.68rem", color:m.border, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {mood}</div>}
+          <div style={{ width:"7px", height:"7px", borderRadius:"50%", background:"#4fffb0", boxShadow:"0 0 8px #4fffb0", flexShrink:0, animation:"pulse 2s ease-in-out infinite" }} />
         </div>
 
         {/* CHAT */}
-        <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.2rem", maxWidth: "780px", width: "100%", margin: "0 auto", alignSelf: "center", boxSizing: "border-box" }}>
+        <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"1.2rem 1rem", display:"flex", flexDirection:"column", gap:"1rem", scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.1) transparent" }}>
+          <div style={{ width:"100%", maxWidth:"680px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"1rem" }}>
 
-          {/* welcome */}
-          {!activeConv && (
-            <div style={{ margin: "auto", textAlign: "center", animation: "fadeUp 0.6s ease" }}>
-              <div style={{ fontFamily: "Syne, sans-serif", fontSize: "clamp(1.8rem,4vw,3rem)", fontWeight: 700, background: "linear-gradient(135deg, #fff 40%, #7c6aff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "0.5rem" }}>What's on your mind?</div>
-              <div style={{ color: "var(--sub)", fontSize: "0.9rem" }}>Start a new chat — I'll set the mood ✦</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", justifyContent: "center", marginTop: "1.5rem" }}>
-                {["Tell me about love 💕","Explain the universe 🌌","Something about nature 🌿","Motivate me 🔥","Talk about the ocean 🌊","Tell me a mystery 🔮"].map(chip => (
-                  <div key={chip} onClick={async () => { await newChat(); }} style={{ padding: "0.5rem 1rem", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "999px", fontSize: "0.82rem", color: "var(--sub)", cursor: "pointer", backdropFilter: "blur(8px)", background: "rgba(255,255,255,0.03)", transition: "all 0.2s" }}>{chip}</div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeConv && messages.length === 0 && !loading && (
-            <div style={{ margin: "auto", textAlign: "center", color: "var(--sub)", fontSize: "0.9rem", animation: "fadeIn 0.4s ease" }}>Ask me anything ✦</div>
-          )}
-
-          {/* messages */}
-          {messages.map((m, i) => (
-            <div key={m.id || i} style={{ display: "flex", gap: "0.8rem", flexDirection: m.role === "user" ? "row-reverse" : "row", animation: "fadeUp 0.4s ease" }}>
-              <div style={{ width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: m.role === "ai" || m.role === "assistant" ? "0.7rem" : "1rem", fontFamily: "Syne, sans-serif", fontWeight: 800, letterSpacing: "0.05em", color: "#fff", background: m.role === "user" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, #7c6aff, #c084fc)`, boxShadow: m.role !== "user" ? "0 0 12px rgba(124,106,255,0.4)" : "none" }}>
-                {m.role === "user" ? "👤" : "AU"}
-              </div>
-              <div style={{ maxWidth: "72%" }}>
-                <div style={{ padding: "0.9rem 1.2rem", borderRadius: m.role === "user" ? "18px 4px 18px 18px" : "4px 18px 18px 18px", lineHeight: 1.65, fontSize: "0.92rem", background: m.role === "user" ? "rgba(124,106,255,0.18)" : "rgba(255,255,255,0.05)", border: m.role === "user" ? "1px solid rgba(124,106,255,0.3)" : "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)", whiteSpace: "pre-wrap" }}>
-                  {m.content}
+            {/* WELCOME */}
+            {!activeConv && (
+              <div style={{ margin:"auto", textAlign:"center", paddingTop:"2rem", animation:"fadeUp 0.6s ease" }}>
+                <div style={{ fontFamily:"Syne,sans-serif", fontSize:"clamp(1.6rem,5vw,2.8rem)", fontWeight:800, background:`linear-gradient(135deg,#fff 30%,${m.border})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:"0.5rem", lineHeight:1.1 }}>What's on your mind?</div>
+                <div style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.88rem", marginBottom:"1.8rem" }}>I'll set the mood for you ✦</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:"0.5rem", justifyContent:"center" }}>
+                  {["Tell me about love 💕","Explain the universe 🌌","Something about nature 🌿","Motivate me 🔥","Talk about the ocean 🌊","Tell me a mystery 🔮","Talk about music 🎵","Recommend food 🍕"].map(chip => (
+                    <div key={chip} onClick={()=>{ setInput(chip); inputRef.current?.focus(); }} style={{ padding:"0.45rem 0.9rem", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"999px", fontSize:"0.78rem", color:"rgba(255,255,255,0.45)", cursor:"pointer", background:"rgba(255,255,255,0.02)", transition:"all 0.2s" }} onMouseEnter={e=>{ e.target.style.borderColor=m.border; e.target.style.color="#fff"; }} onMouseLeave={e=>{ e.target.style.borderColor="rgba(255,255,255,0.1)"; e.target.style.color="rgba(255,255,255,0.45)"; }}>
+                      {chip}
+                    </div>
+                  ))}
                 </div>
-                {m.mood_label && <div style={{ fontSize: "0.7rem", color: "var(--sub)", marginTop: "0.35rem", letterSpacing: "0.08em", textTransform: "uppercase", paddingLeft: "0.3rem" }}>✦ {m.mood_label}</div>}
               </div>
-            </div>
-          ))}
+            )}
 
-          {/* thinking */}
-          {loading && (
-            <div style={{ display: "flex", gap: "0.8rem", animation: "fadeUp 0.3s ease" }}>
-              <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "linear-gradient(135deg, #7c6aff, #c084fc)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontFamily: "Syne, sans-serif", fontWeight: 800, color: "#fff", boxShadow: "0 0 12px rgba(124,106,255,0.4)" }}>AU</div>
-              <div style={{ padding: "0.9rem 1.2rem", borderRadius: "4px 18px 18px 18px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)", display: "flex", gap: "5px", alignItems: "center" }}>
-                {[0,150,300].map(d => <span key={d} style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#7c6aff", display: "block", animation: `bounce 1.2s ${d}ms ease-in-out infinite` }} />)}
+            {activeConv && messages.length===0 && !loading && (
+              <div style={{ textAlign:"center", color:"rgba(255,255,255,0.25)", fontSize:"0.88rem", paddingTop:"3rem", animation:"fadeIn 0.4s ease" }}>Ask me anything ✦</div>
+            )}
+
+            {/* MESSAGES */}
+            {messages.map((msg, i) => (
+              <div key={msg.id||i} style={{ display:"flex", gap:"0.7rem", flexDirection: msg.role==="user" ? "row-reverse" : "row", animation:"fadeUp 0.35s ease" }}>
+                <div style={{ width:"32px", height:"32px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: msg.role==="user" ? "0.9rem" : "0.65rem", fontFamily:"Syne,sans-serif", fontWeight:800, color:"#fff", background: msg.role==="user" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg,#7c6aff,#c084fc)`, boxShadow: msg.role!=="user" ? `0 0 16px rgba(124,106,255,0.5)` : "none", flexBasis:"32px" }}>
+                  {msg.role==="user" ? "👤" : "AU"}
+                </div>
+                <div style={{ maxWidth:"75%", minWidth:0 }}>
+                  <div style={{ padding:"0.85rem 1.1rem", lineHeight:1.7, fontSize:"0.9rem", borderRadius: msg.role==="user" ? "18px 4px 18px 18px" : "4px 18px 18px 18px", background: msg.role==="user" ? `rgba(${m.glow},0.15)` : "rgba(255,255,255,0.04)", border: msg.role==="user" ? `1px solid rgba(${m.glow},0.25)` : "1px solid rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", wordBreak:"break-word", whiteSpace:"pre-wrap" }}>
+                    {msg.content}
+                  </div>
+                  {msg.mood_label && <div style={{ fontSize:"0.68rem", color:`rgba(${m.glow},0.7)`, marginTop:"0.3rem", letterSpacing:"0.08em", textTransform:"uppercase", paddingLeft:"0.3rem" }}>✦ {msg.mood_label}</div>}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+
+            {/* THINKING */}
+            {loading && (
+              <div style={{ display:"flex", gap:"0.7rem", animation:"fadeUp 0.3s ease" }}>
+                <div style={{ width:"32px", height:"32px", borderRadius:"50%", background:`linear-gradient(135deg,#7c6aff,#c084fc)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.65rem", fontFamily:"Syne,sans-serif", fontWeight:800, color:"#fff", boxShadow:"0 0 16px rgba(124,106,255,0.5)", flexShrink:0 }}>AU</div>
+                <div style={{ padding:"0.85rem 1.1rem", borderRadius:"4px 18px 18px 18px", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", display:"flex", gap:"5px", alignItems:"center" }}>
+                  {[0,150,300].map(d=><span key={d} style={{ width:"7px", height:"7px", borderRadius:"50%", background:m.border, display:"block", animation:`bounce 1.2s ${d}ms ease-in-out infinite`, boxShadow:`0 0 6px rgba(${m.glow},0.8)` }} />)}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* INPUT */}
-        <div style={{ padding: "1rem 1.5rem 1.5rem", maxWidth: "780px", width: "100%", margin: "0 auto", alignSelf: "center", boxSizing: "border-box" }}>
-          {!activeConv ? (
-            <button onClick={newChat} style={{ width: "100%", padding: "1rem", background: "linear-gradient(135deg, #7c6aff, #c084fc)", border: "none", borderRadius: "14px", color: "#fff", fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: "1rem", cursor: "pointer", letterSpacing: "0.05em" }}>+ Start New Chat</button>
-          ) : (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: "0.8rem", background: "rgba(255,255,255,0.04)", border: `1px solid ${loading ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.1)"}`, borderRadius: "16px", padding: "0.8rem 1rem", backdropFilter: "blur(16px)", transition: "all 0.3s", boxShadow: input ? `0 0 20px ${currentMood.border}25` : "none" }}>
-                <textarea ref={inputRef} value={input} onChange={e => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Ask anything..." rows={1} style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text)", fontFamily: "DM Sans, sans-serif", fontSize: "0.95rem", resize: "none", maxHeight: "120px", lineHeight: 1.5 }} />
-                <button onClick={send} disabled={loading || !input.trim()} style={{ width: "38px", height: "38px", borderRadius: "10px", background: input.trim() ? "linear-gradient(135deg, #7c6aff, #c084fc)" : "rgba(255,255,255,0.07)", border: "none", cursor: input.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-                  <svg viewBox="0 0 24 24" style={{ width: "16px", height: "16px", fill: "#fff" }}><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        {/* INPUT AREA */}
+        <div style={{ padding:"0.8rem 1rem 1.2rem", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+          <div style={{ maxWidth:"680px", margin:"0 auto" }}>
+
+            {/* GOOGLE-STYLE AMBIENT GLOW AROUND INPUT */}
+            <div style={{ position:"relative" }}>
+              {/* outer glow ring */}
+              <div style={{ position:"absolute", inset:"-3px", borderRadius:"20px", background:`conic-gradient(from var(--angle,0deg), rgba(${m.glow},0), rgba(${m.glow},0.6), rgba(${m.glow},0), rgba(${m.glow},0.4), rgba(${m.glow},0))`, opacity: inputFocused ? 1 : 0, transition:"opacity 0.4s ease", animation: inputFocused ? "rotateBorder 3s linear infinite" : "none", zIndex:0, borderRadius:"20px" }} />
+              <div style={{ position:"absolute", inset:"-1px", borderRadius:"19px", background:"#07070f", zIndex:1 }} />
+
+              {/* input box */}
+              <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-end", gap:"0.7rem", background: inputFocused ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)", border:`1px solid ${inputFocused ? `rgba(${m.glow},0.5)` : "rgba(255,255,255,0.08)"}`, borderRadius:"18px", padding:"0.75rem 0.75rem 0.75rem 1rem", transition:"all 0.3s ease", boxShadow: inputFocused ? `0 0 30px rgba(${m.glow},0.15), 0 0 60px rgba(${m.glow},0.07)` : "none" }}>
+                <textarea ref={inputRef} value={input} onChange={e=>{ setInput(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } }} onFocus={()=>setInputFocused(true)} onBlur={()=>setInputFocused(false)} placeholder="Ask anything..." rows={1} style={{ flex:1, background:"none", border:"none", outline:"none", color:"#fff", fontFamily:"DM Sans,sans-serif", fontSize:"0.92rem", resize:"none", maxHeight:"120px", lineHeight:1.55, scrollbarWidth:"none" }} />
+                <button onClick={send} disabled={loading||!input.trim()} style={{ width:"36px", height:"36px", borderRadius:"10px", background: input.trim() ? `linear-gradient(135deg,#7c6aff,#c084fc)` : "rgba(255,255,255,0.06)", border:"none", cursor: input.trim() ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s", boxShadow: input.trim() ? `0 0 16px rgba(${m.glow},0.5)` : "none", transform: input.trim() ? "scale(1)" : "scale(0.95)" }}>
+                  <svg viewBox="0 0 24 24" style={{ width:"15px", height:"15px", fill:"#fff" }}><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
                 </button>
               </div>
-              <div style={{ textAlign: "center", color: "var(--sub)", fontSize: "0.72rem", marginTop: "0.6rem", letterSpacing: "0.04em" }}>AURA changes its mood based on your question ✦</div>
-            </>
-          )}
+            </div>
+
+            <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
+          </div>
         </div>
       </div>
     </div>
