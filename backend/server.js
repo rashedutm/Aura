@@ -62,35 +62,38 @@ function auth(req, res, next) {
 }
 
 // ── SYSTEM PROMPT ──
-function buildSystemPrompt(currentMood) {
-  return `You are AURA, a warm, insightful and expressive AI assistant.
-Answer the user's question thoughtfully and naturally.
+function buildSystemPrompt(currentMoodData) {
+  return `You are AURA, a warm and expressive AI assistant.
 
-After your answer, on a NEW LINE return ONLY this JSON (no extra text after it):
-{"mood":"<one word>","moodLabel":"<2-3 word label>"}
+Answer the user question naturally and helpfully.
 
-MOOD PERSISTENCE RULES:
-- The current conversation mood is: "${currentMood}"
-- Only change the mood if the topic has CLEARLY and SIGNIFICANTLY shifted
-- Small topic changes should keep the same mood
-- If the user keeps talking about the same general theme, keep the mood
-- Only switch mood for obvious topic changes (e.g. was talking about love, now asking about coding)
+Then on a new line add ONLY this JSON block and nothing after it:
+MOOD_JSON_START
+{"moodLabel":"2-4 word vibe label","emoji":"one emoji","bgColor1":"very dark hex","bgColor2":"very dark hex","bgColor3":"very dark hex","borderColor":"bright vibrant hex","glowRGB":"R,G,B numbers"}
+MOOD_JSON_END
 
-MOOD OPTIONS - pick the most fitting:
-- love → romance, relationships, feelings, dating, crush, heart, affection
-- space → universe, stars, planets, astronomy, cosmos, galaxy, sci-fi
-- nature → plants, animals, environment, forest, earth, trees, outdoors
-- ocean → water, sea, beach, waves, marine, fish, sailing, underwater
-- fire → motivation, energy, passion, anger, heat, excitement, hustle, sports
-- mystery → secrets, unknown, paranormal, conspiracy, thriller, crime, detective
-- happy → joy, celebration, fun, humor, comedy, party, games, entertainment
-- sad → grief, loss, depression, loneliness, heartbreak, pain, struggle
-- tech → coding, computers, AI, software, hardware, programming, internet, gadgets
-- food → eating, cooking, recipes, restaurants, cuisine, drink, nutrition
-- music → songs, artists, concerts, instruments, genres, lyrics, bands
-- default → ONLY for truly generic greetings or completely unclear questions
+Color rules:
+- bgColor1 bgColor2 bgColor3 must be VERY DARK like #001020 or #1a0010 or #0a0020
+- borderColor must be BRIGHT and VIBRANT like #ff4d8f or #00cfff or #39d353
+- glowRGB must be the R G B numbers of borderColor for example if borderColor is #ff4d8f then glowRGB is 255,77,143
+- pick colors that emotionally match the topic
+- emoji must match the topic perfectly
 
-Be decisive! Always pick a specific mood. Avoid default as much as possible.`;
+Examples of good responses:
+- ocean topic: bgColors dark navy like #001828, borderColor bright aqua #00cfff, glowRGB 0,207,255, emoji 🌊
+- love topic: bgColors dark red-pink like #2a0015, borderColor bright pink #ff4d8f, glowRGB 255,77,143, emoji 💕
+- space topic: bgColors near black #000510, borderColor bright cyan #00cfff, glowRGB 0,207,255, emoji ⭐
+- nature topic: bgColors dark green #001a05, borderColor bright lime #39d353, glowRGB 57,211,83, emoji 🍃
+- fire/motivation: bgColors dark orange-black #200800, borderColor bright orange #ff6200, glowRGB 255,98,0, emoji 🔥
+- sad topic: bgColors dark blue-grey #000818, borderColor muted blue #4a6fa5, glowRGB 74,111,165, emoji 🌧️
+- tech/coding: bgColors dark teal-black #001510, borderColor bright green #00ff9d, glowRGB 0,255,157, emoji 💻
+- food topic: bgColors dark warm brown #1a0800, borderColor bright amber #ff8800, glowRGB 255,136,0, emoji 🍜
+- music topic: bgColors dark purple #1a001a, borderColor bright magenta #e040fb, glowRGB 224,64,251, emoji 🎵
+- mystery topic: bgColors dark purple #0d0020, borderColor bright violet #bf5fff, glowRGB 191,95,255, emoji 🔮
+- happy/fun: bgColors dark golden #1a1500, borderColor bright yellow #ffd500, glowRGB 255,213,0, emoji 🌟
+
+Current mood: ${JSON.stringify(currentMoodData)}
+Only change colors if topic clearly shifted. Be creative and decisive!`;
 }
 
 // ── GEMINI API CALL ──
@@ -232,8 +235,7 @@ async function callAI(contents, systemPrompt) {
 
 // ── PARSE AI RESPONSE ──
 function parseResponse(raw) {
-  const jsonMatch = raw.match(/\{[\s\S]*?"moodLabel"[\s\S]*?\}/);
-  let moodData = {
+  const DEFAULT = {
     moodLabel: '',
     emoji: '✨',
     bgColor1: '#0d0d2b',
@@ -242,13 +244,33 @@ function parseResponse(raw) {
     borderColor: '#7c6aff',
     glowRGB: '124,106,255'
   };
+
+  let moodData = { ...DEFAULT };
+  let answer = raw;
+
+  // try MOOD_JSON_START/END markers first
+  const markerMatch = raw.match(/MOOD_JSON_START\s*([\s\S]*?)\s*MOOD_JSON_END/);
+  if (markerMatch) {
+    try {
+      const parsed = JSON.parse(markerMatch[1].trim());
+      moodData = { ...DEFAULT, ...parsed };
+      answer = raw.replace(/MOOD_JSON_START[\s\S]*?MOOD_JSON_END/, '').trim();
+      console.log('Parsed mood:', JSON.stringify(moodData));
+      return { answer, moodData };
+    } catch(e) { console.error('Marker JSON parse error:', markerMatch[1]); }
+  }
+
+  // fallback: find any JSON with moodLabel
+  const jsonMatch = raw.match(/\{[^{}]*"moodLabel"[^{}]*\}/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      moodData = { ...moodData, ...parsed };
+      moodData = { ...DEFAULT, ...parsed };
+      answer = raw.replace(jsonMatch[0], '').trim();
+      console.log('Parsed mood fallback:', JSON.stringify(moodData));
     } catch(e) { console.error('JSON parse error:', jsonMatch[0]); }
   }
-  const answer = raw.replace(/\{[\s\S]*?"moodLabel"[\s\S]*?\}/, '').trim();
+
   return { answer, moodData };
 }
 
