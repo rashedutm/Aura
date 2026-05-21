@@ -390,7 +390,11 @@ app.post('/chat', auth, async (req, res) => {
 
   try {
     const raw = await callAI(contents, buildSystemPrompt(currentMoodData));
+    console.log('=== RAW AI RESPONSE ===');
+    console.log(raw);
+    console.log('=== END RAW RESPONSE ===');
     const { answer, moodData } = parseResponse(raw);
+    console.log('=== PARSED MOOD ===', JSON.stringify(moodData));
 
     // save AI message
     await pool.query(
