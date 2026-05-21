@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import ElectricBorder from "./ElectricBorder";
+import MagicRings from "./MagicRings";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -162,8 +164,12 @@ export default function App() {
   // AUTH SCREEN
   if (!token) return (
     <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflow:"hidden" }}>
-      <div style={{ position:"fixed", inset:0, background:`radial-gradient(ellipse at 30% 40%, #1a0533 0%, transparent 55%), radial-gradient(ellipse at 70% 60%, #001a3a 0%, transparent 55%), #07070f`, animation:"bgPulse 8s ease-in-out infinite alternate" }} />
-      <div style={{ position:"fixed", inset:0, boxShadow:"inset 0 0 120px rgba(124,106,255,0.08)", border:"1px solid rgba(124,106,255,0.15)", pointerEvents:"none" }} />
+      <div style={{ position:"fixed", inset:0, background:"#07070f" }} />
+      {/* MAGIC RINGS BACKGROUND */}
+      <div style={{ position:"fixed", inset:0, zIndex:1 }}>
+        <MagicRings color="#7c6aff" colorTwo="#c084fc" ringCount={6} speed={0.8} opacity={0.9} followMouse={true} mouseInfluence={0.15} parallax={0.04} clickBurst={true} blur={0} noiseAmount={0.08} />
+      </div>
+      <div style={{ position:"fixed", inset:0, zIndex:2, boxShadow:"inset 0 0 120px rgba(124,106,255,0.08)", pointerEvents:"none" }} />
       <div style={{ position:"relative", zIndex:10, width:"min(400px,92vw)", animation:"fadeUp 0.5s ease" }}>
         <div style={{ textAlign:"center", marginBottom:"2rem" }}>
           <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"2.5rem", letterSpacing:"0.2em", background:"linear-gradient(135deg,#fff 20%,#7c6aff 60%,#c084fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
@@ -326,16 +332,20 @@ export default function App() {
         {/* INPUT AREA */}
         <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) 1.2rem", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
-            <div style={{ position:"relative" }}>
-              <div style={{ position:"absolute", inset:"-3px", borderRadius:"20px", background:`conic-gradient(from var(--angle,0deg), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.6), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.4), rgba(${m.glowRGB},0))`, opacity: inputFocused ? 1 : 0, transition:"opacity 0.4s ease", animation: inputFocused ? "rotateBorder 3s linear infinite" : "none", zIndex:0 }} />
-              <div style={{ position:"absolute", inset:"-1px", borderRadius:"19px", background:"#07070f", zIndex:1 }} />
-              <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-end", gap:"0.7rem", background: inputFocused ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)", border:`1px solid ${inputFocused ? `rgba(${m.glowRGB},0.5)` : "rgba(255,255,255,0.08)"}`, borderRadius:"18px", padding:"0.75rem 0.75rem 0.75rem 1rem", transition:"all 0.3s ease", boxShadow: inputFocused ? `0 0 30px rgba(${m.glowRGB},0.15), 0 0 60px rgba(${m.glowRGB},0.07)` : "none" }}>
+            <ElectricBorder
+              color={m.borderColor}
+              speed={inputFocused ? 1.5 : 0.6}
+              chaos={inputFocused ? 0.18 : 0.06}
+              borderRadius={18}
+              style={{ display:"block" }}
+            >
+              <div style={{ display:"flex", alignItems:"flex-end", gap:"0.7rem", background: inputFocused ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)", borderRadius:"18px", padding:"0.75rem 0.75rem 0.75rem 1rem", transition:"all 0.3s ease" }}>
                 <textarea ref={inputRef} value={input} onChange={e=>{ setInput(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } }} onFocus={()=>setInputFocused(true)} onBlur={()=>setInputFocused(false)} placeholder="Ask anything..." rows={1} style={{ flex:1, background:"none", border:"none", outline:"none", color:"#fff", fontFamily:"DM Sans,sans-serif", fontSize:"0.92rem", resize:"none", maxHeight:"120px", lineHeight:1.55, scrollbarWidth:"none" }} />
                 <button onClick={send} disabled={loading||!input.trim()} style={{ width:"36px", height:"36px", borderRadius:"10px", background: input.trim() ? `linear-gradient(135deg,#7c6aff,#c084fc)` : "rgba(255,255,255,0.06)", border:"none", cursor: input.trim() ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s", boxShadow: input.trim() ? `0 0 16px rgba(${m.glowRGB},0.5)` : "none", transform: input.trim() ? "scale(1)" : "scale(0.95)" }}>
                   <svg viewBox="0 0 24 24" style={{ width:"15px", height:"15px", fill:"#fff" }}><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
                 </button>
               </div>
-            </div>
+            </ElectricBorder>
             <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
