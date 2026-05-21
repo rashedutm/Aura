@@ -51,7 +51,7 @@ export default function App() {
   const spawnParticle = useCallback(() => {
     if (!particlesRef.current) return;
     const p = document.createElement("div");
-    const size = Math.random() * 1.4 + 0.7;
+    const size = Math.random() * 2 + 1;
     const dur = Math.random() * 5 + 6;
     p.style.cssText = `
       position:absolute;bottom:-60px;pointer-events:none;user-select:none;
