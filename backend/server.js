@@ -111,16 +111,16 @@ async function callGemini(contents, systemPrompt) {
   return text;
 }
 
-// ── GROQ API CALL ──
-async function callGroq(messages, systemPrompt) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+// ── OPENAI-COMPATIBLE API CALL (used by Groq, NVIDIA, OpenRouter) ──
+async function callOpenAICompatible(name, baseURL, apiKey, model, messages, systemPrompt) {
+  const res = await fetch(`${baseURL}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages.map(m => ({
@@ -133,31 +133,42 @@ async function callGroq(messages, systemPrompt) {
     })
   });
   const data = await res.json();
-  if (data.error) { console.error('Groq error detail:', JSON.stringify(data.error)); throw new Error('groq_error'); }
+  if (data.error) { console.error(`${name} error:`, JSON.stringify(data.error)); throw new Error(`${name}_error`); }
   const text = data.choices?.[0]?.message?.content || '';
-  if (!text) { console.error('Groq empty response:', JSON.stringify(data)); throw new Error('groq_empty'); }
+  if (!text) { console.error(`${name} empty response`); throw new Error(`${name}_empty`); }
   return text;
 }
 
-// ── CALL AI WITH FALLBACK ──
-async function callAI(contents, systemPrompt) {
-  // try Gemini first
-  try {
-    console.log('trying Gemini...');
-    const result = await callGemini(contents, systemPrompt);
-    console.log('Gemini success ✅');
-    return result;
-  } catch(e) {
-    console.log('Gemini failed, trying Groq...');
-  }
+async function callGroq(messages, systemPrompt) {
+  return callOpenAICompatible('Groq', 'https://api.groq.com/openai/v1', process.env.GROQ_API_KEY, 'llama-3.1-8b-instant', messages, systemPrompt);
+}
 
-  // fallback to Groq
-  try {
-    const result = await callGroq(contents, systemPrompt);
-    console.log('Groq success ✅');
-    return result;
-  } catch(e) {
-    console.log('Groq failed too ❌');
+async function callNvidia1(messages, systemPrompt) {
+  return callOpenAICompatible('Nvidia1', 'https://integrate.api.nvidia.com/v1', process.env.NVIDIA_API_KEY_1, 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', messages, systemPrompt);
+}
+
+async function callNvidia2(messages, systemPrompt) {
+  return callOpenAICompatible('Nvidia2', 'https://integrate.api.nvidia.com/v1', process.env.NVIDIA_API_KEY_2, 'meta/llama-3.3-70b-instruct', messages, systemPrompt);
+}
+
+// ── CALL AI WITH FALLBACK (4 APIs) ──
+async function callAI(contents, systemPrompt) {
+  const providers = [
+    { name: 'Gemini',  fn: () => callGemini(contents, systemPrompt) },
+    { name: 'Groq',    fn: () => callGroq(contents, systemPrompt) },
+    { name: 'Nvidia1', fn: () => callNvidia1(contents, systemPrompt) },
+    { name: 'Nvidia2', fn: () => callNvidia2(contents, systemPrompt) },
+  ];
+
+  for (const provider of providers) {
+    try {
+      console.log(`trying ${provider.name}...`);
+      const result = await provider.fn();
+      console.log(`${provider.name} success ✅`);
+      return result;
+    } catch(e) {
+      console.log(`${provider.name} failed, trying next...`);
+    }
   }
 
   throw new Error('service_unavailable');
