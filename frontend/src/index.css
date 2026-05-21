@@ -2,6 +2,7 @@
 
 html, body, #root {
   height: 100%;
+  height: -webkit-fill-available;
   overflow: hidden;
   font-family: 'DM Sans', sans-serif;
   color: #e8e8f0;
@@ -93,5 +94,10 @@ html, body, #root {
 @media (max-width: 480px) {
   .magic-rings-container {
     opacity: 0.5;
+  }
+}
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
