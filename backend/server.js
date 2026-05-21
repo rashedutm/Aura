@@ -144,11 +144,64 @@ async function callGroq(messages, systemPrompt) {
 }
 
 async function callNvidia1(messages, systemPrompt) {
-  return callOpenAICompatible('Nvidia1', 'https://integrate.api.nvidia.com/v1', process.env.NVIDIA_API_KEY_1, 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', messages, systemPrompt);
+  // nemotron is a reasoning model - different response format
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.NVIDIA_API_KEY_1}`
+    },
+    body: JSON.stringify({
+      model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({
+          role: m.role === 'model' ? 'assistant' : m.role,
+          content: m.parts ? m.parts[0].text : m.content
+        }))
+      ],
+      temperature: 0.6,
+      top_p: 0.95,
+      max_tokens: 1024,
+      stream: false
+    })
+  });
+  const data = await res.json();
+  console.log('Nvidia1 raw response:', JSON.stringify(data).substring(0, 300));
+  if (data.error) { console.error('Nvidia1 error:', JSON.stringify(data.error)); throw new Error('nvidia1_error'); }
+  // reasoning model returns content OR reasoning_content
+  const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
+  if (!text) throw new Error('nvidia1_empty');
+  return text;
 }
 
 async function callNvidia2(messages, systemPrompt) {
-  return callOpenAICompatible('Nvidia2', 'https://integrate.api.nvidia.com/v1', process.env.NVIDIA_API_KEY_2, 'meta/llama-3.3-70b-instruct', messages, systemPrompt);
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.NVIDIA_API_KEY_2}`
+    },
+    body: JSON.stringify({
+      model: 'meta/llama-3.3-70b-instruct',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({
+          role: m.role === 'model' ? 'assistant' : m.role,
+          content: m.parts ? m.parts[0].text : m.content
+        }))
+      ],
+      temperature: 0.9,
+      max_tokens: 1024,
+      stream: false
+    })
+  });
+  const data = await res.json();
+  console.log('Nvidia2 raw response:', JSON.stringify(data).substring(0, 300));
+  if (data.error) { console.error('Nvidia2 error:', JSON.stringify(data.error)); throw new Error('nvidia2_error'); }
+  const text = data.choices?.[0]?.message?.content || '';
+  if (!text) throw new Error('nvidia2_empty');
+  return text;
 }
 
 // ── CALL AI WITH FALLBACK (4 APIs) ──
