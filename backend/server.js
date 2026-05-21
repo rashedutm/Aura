@@ -35,13 +35,16 @@ async function initDB() {
       conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
       role VARCHAR(10) NOT NULL,
       content TEXT NOT NULL,
-      mood VARCHAR(50) DEFAULT 'default',
+      mood TEXT DEFAULT 'default',
       mood_label VARCHAR(100),
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
   // add current_mood column if it doesn't exist (for existing DBs)
-  await pool.query(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS current_mood VARCHAR(50) DEFAULT 'default'`);
+  await pool.query(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS current_mood TEXT DEFAULT 'default'`);
+  // expand mood columns if they were created small
+  await pool.query(`ALTER TABLE messages ALTER COLUMN mood TYPE TEXT`);
+  await pool.query(`ALTER TABLE conversations ALTER COLUMN current_mood TYPE TEXT`);
   console.log('✅ Database ready');
 }
 initDB();
@@ -388,11 +391,12 @@ app.post('/chat', auth, async (req, res) => {
       "Connection hiccup! Please try once more.",
     ];
     const friendly = friendlyMessages[Math.floor(Math.random() * friendlyMessages.length)];
+    const moodJson = JSON.stringify(currentMoodData);
 
     // save friendly message so chat history looks clean
     await pool.query(
       'INSERT INTO messages (conversation_id, role, content, mood, mood_label) VALUES ($1, $2, $3, $4, $5)',
-      [conversationId, 'assistant', friendly, currentMood, '']
+      [conversationId, 'assistant', friendly, moodJson, '']
     );
 
     res.json({ answer: friendly, moodData: currentMoodData });
