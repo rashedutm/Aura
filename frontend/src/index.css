@@ -45,3 +45,33 @@ html, body, #root {
 @keyframes rotateBorder {
   to { --angle: 360deg; }
 }
+
+/* ── RESPONSIVE CHAT WIDTH ── */
+
+/* tablet landscape and small laptop */
+@media (min-width: 768px) and (orientation: landscape) {
+  .chat-container, .input-container {
+    max-width: 88vw !important;
+  }
+}
+
+/* laptop */
+@media (min-width: 1024px) {
+  .chat-container, .input-container {
+    max-width: 72vw !important;
+  }
+}
+
+/* large laptop / desktop */
+@media (min-width: 1280px) {
+  .chat-container, .input-container {
+    max-width: 64vw !important;
+  }
+}
+
+/* wide monitor */
+@media (min-width: 1600px) {
+  .chat-container, .input-container {
+    max-width: 55vw !important;
+  }
+}

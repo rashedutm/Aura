@@ -63,7 +63,7 @@ export default function App() {
     p.textContent = moodData?.emoji || "✨";
     particlesRef.current.appendChild(p);
     setTimeout(() => p.remove(), (dur + 3) * 1000);
-  }, [m.emoji, m.glowRGB]);
+  }, [m.glowRGB, moodData]);
 
   useEffect(() => {
     clearInterval(particleTimer.current);
@@ -90,9 +90,7 @@ export default function App() {
           try {
             const parsed = JSON.parse(last.mood);
             if (parsed && typeof parsed === "object") setMoodData(parsed);
-          } catch(e) {
-            // old format string mood - ignore, keep default
-          }
+          } catch(e) {}
         }
       }).catch(() => {});
   }, [activeConv, token]);
@@ -146,7 +144,7 @@ export default function App() {
         body: JSON.stringify({ message: text, conversationId: conv.id }),
       }, token);
       if (data.moodData) setMoodData(data.moodData);
-      setMessages(prev => [...prev, { role: "assistant", content: data.answer, mood: data.mood, mood_label: data.moodLabel, id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: data.answer, mood: data.mood, mood_label: data.moodData?.moodLabel, id: Date.now() + 1 }]);
       apiFetch("/conversations", {}, token).then(setConversations);
     } catch(e) {
       setMessages(prev => [...prev, { role: "assistant", content: "⚠️ " + e.message, id: Date.now() + 1 }]);
@@ -212,8 +210,8 @@ export default function App() {
 
       {/* CORNER ACCENTS */}
       {[{top:0,left:0},{top:0,right:0},{bottom:0,left:0},{bottom:0,right:0}].map((pos,i)=>(
-        <div key={i} style={{ position:"fixed", zIndex:2, pointerEvents:"none", width:"80px", height:"80px", ...pos,
-          background:`radial-gradient(circle at ${i<2?(i===0?"0% 0%":"100% 0%"):(i===2?"0% 100%":"100% 100%")}, rgba(${m.glowRGB},0.15) 0%, transparent 70%)`,
+        <div key={i} style={{ position:"fixed", zIndex:2, pointerEvents:"none", width:"120px", height:"120px", ...pos,
+          background:`radial-gradient(circle at ${i<2?(i===0?"0% 0%":"100% 0%"):(i===2?"0% 100%":"100% 100%")}, rgba(${m.glowRGB},0.2) 0%, transparent 70%)`,
           transition:"all 3s ease"
         }} />
       ))}
@@ -221,7 +219,7 @@ export default function App() {
       {/* PARTICLES */}
       <div ref={particlesRef} style={{ position:"fixed", inset:0, zIndex:2, pointerEvents:"none", overflow:"hidden" }} />
 
-      {/* SIDEBAR OVERLAY (mobile) */}
+      {/* SIDEBAR OVERLAY */}
       {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{ position:"fixed", inset:0, zIndex:20, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }} />}
 
       {/* SIDEBAR */}
@@ -236,14 +234,12 @@ export default function App() {
       }}>
         <div style={{ width:"min(280px,80vw)", height:"100%", display:"flex", flexDirection:"column", padding:"1.2rem 1rem" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.2rem" }}>
-            <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"1.2rem", letterSpacing:"0.15em", background:`linear-gradient(135deg,#fff,#${m.borderColor.slice(1)})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
+            <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"1.2rem", letterSpacing:"0.15em", background:`linear-gradient(135deg,#fff,${m.borderColor})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
             <button onClick={()=>setSidebarOpen(false)} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.4)", cursor:"pointer", fontSize:"1.3rem", lineHeight:1 }}>×</button>
           </div>
-
           <button onClick={newChat} style={{ width:"100%", padding:"0.75rem", background:`linear-gradient(135deg, rgba(${m.glowRGB},0.2), rgba(${m.glowRGB},0.08))`, border:`1px solid rgba(${m.glowRGB},0.3)`, borderRadius:"12px", color:"#fff", fontFamily:"Syne,sans-serif", fontWeight:600, fontSize:"0.82rem", cursor:"pointer", marginBottom:"1rem", letterSpacing:"0.05em", transition:"all 0.2s" }}>
             + New Chat
           </button>
-
           <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:"0.25rem" }}>
             {conversations.map(c => (
               <div key={c.id} onClick={()=>{ setActiveConv(c); setSidebarOpen(false); }} style={{ padding:"0.65rem 0.75rem", borderRadius:"10px", cursor:"pointer", background: activeConv?.id===c.id ? `rgba(${m.glowRGB},0.18)` : "transparent", border: activeConv?.id===c.id ? `1px solid rgba(${m.glowRGB},0.3)` : "1px solid transparent", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.5rem", transition:"all 0.15s" }}>
@@ -253,7 +249,6 @@ export default function App() {
             ))}
             {conversations.length===0 && <div style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.75rem", textAlign:"center", marginTop:"1rem" }}>No conversations yet</div>}
           </div>
-
           <div style={{ borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:"0.8rem", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
               <div style={{ width:"30px", height:"30px", borderRadius:"50%", background:`linear-gradient(135deg,#7c6aff,#c084fc)`, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"0.75rem", color:"#fff" }}>{username?.[0]?.toUpperCase()}</div>
@@ -275,9 +270,11 @@ export default function App() {
           <div style={{ width:"7px", height:"7px", borderRadius:"50%", background:"#4fffb0", boxShadow:"0 0 8px #4fffb0", flexShrink:0, animation:"pulse 2s ease-in-out infinite" }} />
         </div>
 
-        {/* CHAT */}
-        <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"1.2rem 1rem", display:"flex", flexDirection:"column", gap:"1rem", scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.1) transparent" }}>
-          <div style={{ width:"100%", maxWidth:"680px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"1rem" }}>
+        {/* CHAT — fully fluid width with padding on sides */}
+        <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"1.2rem clamp(0.8rem, 4vw, 3rem)", display:"flex", flexDirection:"column", gap:"1rem", scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.1) transparent" }}>
+
+          {/* inner wrapper — fills width on phone/tablet, capped on laptop+ */}
+          <div className="chat-container" style={{ width:"100%", maxWidth:"680px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"1rem" }}>
 
             {/* WELCOME */}
             {!activeConv && (
@@ -304,7 +301,8 @@ export default function App() {
                 <div style={{ width:"32px", height:"32px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: msg.role==="user" ? "0.9rem" : "0.65rem", fontFamily:"Syne,sans-serif", fontWeight:800, color:"#fff", background: msg.role==="user" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg,#7c6aff,#c084fc)`, boxShadow: msg.role!=="user" ? `0 0 16px rgba(124,106,255,0.5)` : "none", flexBasis:"32px" }}>
                   {msg.role==="user" ? "👤" : "AU"}
                 </div>
-                <div style={{ maxWidth:"75%", minWidth:0 }}>
+                {/* bubble grows with available space — no fixed maxWidth */}
+                <div style={{ flex: msg.role==="user" ? "0 1 auto" : "1", minWidth:0, maxWidth: msg.role==="user" ? "80%" : "100%" }}>
                   <div style={{ padding:"0.85rem 1.1rem", lineHeight:1.7, fontSize:"0.9rem", borderRadius: msg.role==="user" ? "18px 4px 18px 18px" : "4px 18px 18px 18px", background: msg.role==="user" ? `rgba(${m.glowRGB},0.15)` : "rgba(255,255,255,0.04)", border: msg.role==="user" ? `1px solid rgba(${m.glowRGB},0.25)` : "1px solid rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", wordBreak:"break-word", whiteSpace:"pre-wrap" }}>
                     {msg.content}
                   </div>
@@ -326,16 +324,11 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ padding:"0.8rem 1rem 1.2rem", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
-          <div style={{ maxWidth:"680px", margin:"0 auto" }}>
-
-            {/* GOOGLE-STYLE AMBIENT GLOW AROUND INPUT */}
+        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) 1.2rem", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+          <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <div style={{ position:"relative" }}>
-              {/* outer glow ring */}
-              <div style={{ position:"absolute", inset:"-3px", borderRadius:"20px", background:`conic-gradient(from var(--angle,0deg), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.6), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.4), rgba(${m.glowRGB},0))`, opacity: inputFocused ? 1 : 0, transition:"opacity 0.4s ease", animation: inputFocused ? "rotateBorder 3s linear infinite" : "none", zIndex:0, borderRadius:"20px" }} />
+              <div style={{ position:"absolute", inset:"-3px", borderRadius:"20px", background:`conic-gradient(from var(--angle,0deg), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.6), rgba(${m.glowRGB},0), rgba(${m.glowRGB},0.4), rgba(${m.glowRGB},0))`, opacity: inputFocused ? 1 : 0, transition:"opacity 0.4s ease", animation: inputFocused ? "rotateBorder 3s linear infinite" : "none", zIndex:0 }} />
               <div style={{ position:"absolute", inset:"-1px", borderRadius:"19px", background:"#07070f", zIndex:1 }} />
-
-              {/* input box */}
               <div style={{ position:"relative", zIndex:2, display:"flex", alignItems:"flex-end", gap:"0.7rem", background: inputFocused ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)", border:`1px solid ${inputFocused ? `rgba(${m.glowRGB},0.5)` : "rgba(255,255,255,0.08)"}`, borderRadius:"18px", padding:"0.75rem 0.75rem 0.75rem 1rem", transition:"all 0.3s ease", boxShadow: inputFocused ? `0 0 30px rgba(${m.glowRGB},0.15), 0 0 60px rgba(${m.glowRGB},0.07)` : "none" }}>
                 <textarea ref={inputRef} value={input} onChange={e=>{ setInput(e.target.value); e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); send(); } }} onFocus={()=>setInputFocused(true)} onBlur={()=>setInputFocused(false)} placeholder="Ask anything..." rows={1} style={{ flex:1, background:"none", border:"none", outline:"none", color:"#fff", fontFamily:"DM Sans,sans-serif", fontSize:"0.92rem", resize:"none", maxHeight:"120px", lineHeight:1.55, scrollbarWidth:"none" }} />
                 <button onClick={send} disabled={loading||!input.trim()} style={{ width:"36px", height:"36px", borderRadius:"10px", background: input.trim() ? `linear-gradient(135deg,#7c6aff,#c084fc)` : "rgba(255,255,255,0.06)", border:"none", cursor: input.trim() ? "pointer" : "default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s", boxShadow: input.trim() ? `0 0 16px rgba(${m.glowRGB},0.5)` : "none", transform: input.trim() ? "scale(1)" : "scale(0.95)" }}>
@@ -343,7 +336,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-
             <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
