@@ -75,3 +75,23 @@ html, body, #root {
     max-width: 55vw !important;
   }
 }
+
+/* ── TABLET INPUT FIX ── */
+@media (min-width: 600px) and (max-width: 1023px) {
+  /* ensure input area never goes off screen on tablet */
+  .input-area-fix {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* fix electric border overflow on small screens */
+.electric-border {
+  overflow: visible !important;
+}
+
+/* auth screen on small phone - make rings smaller/dimmer */
+@media (max-width: 480px) {
+  .magic-rings-container {
+    opacity: 0.5;
+  }
+}

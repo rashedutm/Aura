@@ -163,14 +163,14 @@ export default function App() {
 
   // AUTH SCREEN
   if (!token) return (
-    <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
       <div style={{ position:"fixed", inset:0, background:"#07070f" }} />
       {/* MAGIC RINGS BACKGROUND */}
       <div style={{ position:"fixed", inset:0, zIndex:1 }}>
-        <MagicRings color="#7c6aff" colorTwo="#c084fc" ringCount={6} speed={0.8} opacity={0.9} followMouse={true} mouseInfluence={0.15} parallax={0.04} clickBurst={true} blur={0} noiseAmount={0.08} />
+        <MagicRings color="#7c6aff" colorTwo="#c084fc" ringCount={5} speed={0.8} opacity={0.85} followMouse={true} mouseInfluence={0.1} parallax={0.03} clickBurst={true} blur={0} noiseAmount={0.06} baseRadius={0.2} radiusStep={0.08} />
       </div>
       <div style={{ position:"fixed", inset:0, zIndex:2, boxShadow:"inset 0 0 120px rgba(124,106,255,0.08)", pointerEvents:"none" }} />
-      <div style={{ position:"relative", zIndex:10, width:"min(400px,92vw)", animation:"fadeUp 0.5s ease" }}>
+      <div style={{ position:"relative", zIndex:10, width:"min(400px,92vw)", animation:"fadeUp 0.5s ease", margin:"auto" }}>
         <div style={{ textAlign:"center", marginBottom:"2rem" }}>
           <div style={{ fontFamily:"Syne,sans-serif", fontWeight:800, fontSize:"2.5rem", letterSpacing:"0.2em", background:"linear-gradient(135deg,#fff 20%,#7c6aff 60%,#c084fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>AURA</div>
           <div style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.7rem", letterSpacing:"0.4em", marginTop:"0.3rem" }}>AMBIENT AI</div>
@@ -330,12 +330,12 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) 1.2rem", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) max(1.2rem, env(safe-area-inset-bottom, 1.2rem))", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <ElectricBorder
               color={m.borderColor}
-              speed={inputFocused ? 1.5 : 0.6}
-              chaos={inputFocused ? 0.18 : 0.06}
+              speed={inputFocused ? 1.2 : 0.5}
+              chaos={inputFocused ? 0.08 : 0.03}
               borderRadius={18}
               style={{ display:"block" }}
             >
