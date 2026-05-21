@@ -229,17 +229,24 @@ async function callAI(contents, systemPrompt) {
 
 // ── PARSE AI RESPONSE ──
 function parseResponse(raw) {
-  const jsonMatch = raw.match(/\{[\s\S]*?"mood"[\s\S]*?\}/);
-  let mood = 'default', moodLabel = '';
+  const jsonMatch = raw.match(/\{[\s\S]*?"moodLabel"[\s\S]*?\}/);
+  let moodData = {
+    moodLabel: '',
+    emoji: '✨',
+    bgColor1: '#0d0d2b',
+    bgColor2: '#1a1040',
+    bgColor3: '#0d1a2b',
+    borderColor: '#7c6aff',
+    glowRGB: '124,106,255'
+  };
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      mood = parsed.mood || 'default';
-      moodLabel = parsed.moodLabel || '';
-    } catch(e) {}
+      moodData = { ...moodData, ...parsed };
+    } catch(e) { console.error('JSON parse error:', jsonMatch[0]); }
   }
-  const answer = raw.replace(/\{[\s\S]*?"mood"[\s\S]*?\}/, '').trim();
-  return { answer, mood, moodLabel };
+  const answer = raw.replace(/\{[\s\S]*?"moodLabel"[\s\S]*?\}/, '').trim();
+  return { answer, moodData };
 }
 
 // ── REGISTER ──
@@ -320,9 +327,10 @@ app.post('/chat', auth, async (req, res) => {
     [conversationId, 'user', message]
   );
 
-  // get current mood of conversation
+  // get current mood data of conversation
   const convResult = await pool.query('SELECT current_mood FROM conversations WHERE id = $1', [conversationId]);
-  const currentMood = convResult.rows[0]?.current_mood || 'default';
+  let currentMoodData = {};
+  try { currentMoodData = JSON.parse(convResult.rows[0]?.current_mood || '{}'); } catch(e) {}
 
   // get conversation history
   const history = await pool.query(
@@ -350,24 +358,24 @@ app.post('/chat', auth, async (req, res) => {
   }
 
   try {
-    const raw = await callAI(contents, buildSystemPrompt(currentMood));
-    const { answer, mood, moodLabel } = parseResponse(raw);
+    const raw = await callAI(contents, buildSystemPrompt(currentMoodData));
+    const { answer, moodData } = parseResponse(raw);
 
     // save AI message
     await pool.query(
       'INSERT INTO messages (conversation_id, role, content, mood, mood_label) VALUES ($1, $2, $3, $4, $5)',
-      [conversationId, 'assistant', answer, mood, moodLabel]
+      [conversationId, 'assistant', answer, JSON.stringify(moodData), moodData.moodLabel || '']
     );
 
     // update conversation mood + title
-    await pool.query('UPDATE conversations SET current_mood = $1 WHERE id = $2', [mood, conversationId]);
+    await pool.query('UPDATE conversations SET current_mood = $1 WHERE id = $2', [JSON.stringify(moodData), conversationId]);
     const count = await pool.query('SELECT COUNT(*) FROM messages WHERE conversation_id = $1', [conversationId]);
     if (parseInt(count.rows[0].count) <= 2) {
       const title = message.length > 40 ? message.substring(0, 40) + '...' : message;
       await pool.query('UPDATE conversations SET title = $1 WHERE id = $2', [title, conversationId]);
     }
 
-    res.json({ answer, mood, moodLabel });
+    res.json({ answer, moodData });
 
   } catch(e) {
     // never reveal which AI failed — always show friendly message
@@ -387,7 +395,7 @@ app.post('/chat', auth, async (req, res) => {
       [conversationId, 'assistant', friendly, currentMood, '']
     );
 
-    res.json({ answer: friendly, mood: currentMood, moodLabel: '' });
+    res.json({ answer: friendly, moodData: currentMoodData });
   }
 });
 
