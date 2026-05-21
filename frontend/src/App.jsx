@@ -87,7 +87,12 @@ export default function App() {
         setMessages(msgs);
         const last = msgs.filter(msg => msg.role === "assistant").pop();
         if (last?.mood) {
-          try { setMoodData(JSON.parse(last.mood)); } catch(e) {}
+          try {
+            const parsed = JSON.parse(last.mood);
+            if (parsed && typeof parsed === "object") setMoodData(parsed);
+          } catch(e) {
+            // old format string mood - ignore, keep default
+          }
         }
       }).catch(() => {});
   }, [activeConv, token]);
@@ -266,7 +271,7 @@ export default function App() {
         <div style={{ padding:"0.9rem 1rem", display:"flex", alignItems:"center", gap:"0.8rem", borderBottom:"1px solid rgba(255,255,255,0.05)", backdropFilter:"blur(10px)", background:"rgba(7,7,15,0.6)", flexShrink:0 }}>
           <button onClick={()=>setSidebarOpen(true)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:"0.4rem 0.5rem", flexShrink:0 }}>☰</button>
           <div style={{ flex:1, fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.85rem", color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{activeConv?.title || "AURA"}</div>
-          {mood!=="default" && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {mood}</div>}
+          {moodData?.moodLabel && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {moodData.moodLabel}</div>}
           <div style={{ width:"7px", height:"7px", borderRadius:"50%", background:"#4fffb0", boxShadow:"0 0 8px #4fffb0", flexShrink:0, animation:"pulse 2s ease-in-out infinite" }} />
         </div>
 
