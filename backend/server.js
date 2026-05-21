@@ -15,7 +15,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// ── INIT TABLES ──
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -24,14 +23,13 @@ async function initDB() {
       password VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
-
     CREATE TABLE IF NOT EXISTS conversations (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       title VARCHAR(255),
+      current_mood VARCHAR(50) DEFAULT 'default',
       created_at TIMESTAMP DEFAULT NOW()
     );
-
     CREATE TABLE IF NOT EXISTS messages (
       id SERIAL PRIMARY KEY,
       conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
@@ -42,6 +40,8 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+  // add current_mood column if it doesn't exist (for existing DBs)
+  await pool.query(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS current_mood VARCHAR(50) DEFAULT 'default'`);
   console.log('✅ Database ready');
 }
 initDB();
@@ -58,6 +58,126 @@ function auth(req, res, next) {
   }
 }
 
+// ── SYSTEM PROMPT ──
+function buildSystemPrompt(currentMood) {
+  return `You are AURA, a warm, insightful and expressive AI assistant.
+Answer the user's question thoughtfully and naturally.
+
+After your answer, on a NEW LINE return ONLY this JSON (no extra text after it):
+{"mood":"<one word>","moodLabel":"<2-3 word label>"}
+
+MOOD PERSISTENCE RULES:
+- The current conversation mood is: "${currentMood}"
+- Only change the mood if the topic has CLEARLY and SIGNIFICANTLY shifted
+- Small topic changes should keep the same mood
+- If the user keeps talking about the same general theme, keep the mood
+- Only switch mood for obvious topic changes (e.g. was talking about love, now asking about coding)
+
+MOOD OPTIONS - pick the most fitting:
+- love → romance, relationships, feelings, dating, crush, heart, affection
+- space → universe, stars, planets, astronomy, cosmos, galaxy, sci-fi
+- nature → plants, animals, environment, forest, earth, trees, outdoors
+- ocean → water, sea, beach, waves, marine, fish, sailing, underwater
+- fire → motivation, energy, passion, anger, heat, excitement, hustle, sports
+- mystery → secrets, unknown, paranormal, conspiracy, thriller, crime, detective
+- happy → joy, celebration, fun, humor, comedy, party, games, entertainment
+- sad → grief, loss, depression, loneliness, heartbreak, pain, struggle
+- tech → coding, computers, AI, software, hardware, programming, internet, gadgets
+- food → eating, cooking, recipes, restaurants, cuisine, drink, nutrition
+- music → songs, artists, concerts, instruments, genres, lyrics, bands
+- default → ONLY for truly generic greetings or completely unclear questions
+
+Be decisive! Always pick a specific mood. Avoid default as much as possible.`;
+}
+
+// ── GEMINI API CALL ──
+async function callGemini(contents, systemPrompt) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
+      })
+    }
+  );
+  const data = await res.json();
+  if (data.error) throw new Error('gemini_error');
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!text) throw new Error('gemini_empty');
+  return text;
+}
+
+// ── GROQ API CALL ──
+async function callGroq(messages, systemPrompt) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'llama3-8b-8192',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages.map(m => ({
+          role: m.role === 'model' ? 'assistant' : m.role,
+          content: m.parts ? m.parts[0].text : m.content
+        }))
+      ],
+      temperature: 0.9,
+      max_tokens: 1024
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error('groq_error');
+  const text = data.choices?.[0]?.message?.content || '';
+  if (!text) throw new Error('groq_empty');
+  return text;
+}
+
+// ── CALL AI WITH FALLBACK ──
+async function callAI(contents, systemPrompt) {
+  // try Gemini first
+  try {
+    console.log('trying Gemini...');
+    const result = await callGemini(contents, systemPrompt);
+    console.log('Gemini success ✅');
+    return result;
+  } catch(e) {
+    console.log('Gemini failed, trying Groq...');
+  }
+
+  // fallback to Groq
+  try {
+    const result = await callGroq(contents, systemPrompt);
+    console.log('Groq success ✅');
+    return result;
+  } catch(e) {
+    console.log('Groq failed too ❌');
+  }
+
+  throw new Error('service_unavailable');
+}
+
+// ── PARSE AI RESPONSE ──
+function parseResponse(raw) {
+  const jsonMatch = raw.match(/\{[\s\S]*?"mood"[\s\S]*?\}/);
+  let mood = 'default', moodLabel = '';
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      mood = parsed.mood || 'default';
+      moodLabel = parsed.moodLabel || '';
+    } catch(e) {}
+  }
+  const answer = raw.replace(/\{[\s\S]*?"mood"[\s\S]*?\}/, '').trim();
+  return { answer, mood, moodLabel };
+}
+
 // ── REGISTER ──
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
@@ -70,9 +190,9 @@ app.post('/register', async (req, res) => {
     );
     const token = jwt.sign({ id: result.rows[0].id, username: result.rows[0].username }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, username: result.rows[0].username });
-  } catch (e) {
+  } catch(e) {
     if (e.code === '23505') return res.status(400).json({ error: 'Username already taken' });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -87,7 +207,7 @@ app.post('/login', async (req, res) => {
     const token = jwt.sign({ id: result.rows[0].id, username: result.rows[0].username }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, username: result.rows[0].username });
   } catch {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -136,35 +256,17 @@ app.post('/chat', auth, async (req, res) => {
     [conversationId, 'user', message]
   );
 
-  // get conversation history for context
+  // get current mood of conversation
+  const convResult = await pool.query('SELECT current_mood FROM conversations WHERE id = $1', [conversationId]);
+  const currentMood = convResult.rows[0]?.current_mood || 'default';
+
+  // get conversation history
   const history = await pool.query(
     'SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
     [conversationId]
   );
 
-  const systemPrompt = `You are AURA, a warm, insightful and expressive AI assistant.
-Answer the user's question thoughtfully and naturally.
-After your answer, on a NEW LINE return ONLY this JSON (no extra text after it):
-{"mood":"<one word>","moodLabel":"<2-3 word label>"}
-
-MOOD RULES - pick the MOST fitting, avoid default unless truly neutral:
-- love → romance, relationships, feelings, dating, crush, heart
-- space → universe, stars, planets, astronomy, cosmos, galaxy
-- nature → plants, animals, environment, forest, earth, trees
-- ocean → water, sea, beach, waves, marine, fish, sailing
-- fire → motivation, energy, passion, anger, heat, excitement, hustle
-- mystery → secrets, unknown, paranormal, conspiracy, thriller, crime
-- happy → joy, celebration, fun, humor, comedy, party, games
-- sad → grief, loss, depression, loneliness, heartbreak, pain
-- tech → coding, computers, AI, software, hardware, programming, internet
-- food → eating, cooking, recipes, restaurants, cuisine, drink
-- music → songs, artists, concerts, instruments, genres, lyrics
-- default → ONLY for truly generic or unclear questions
-
-Always pick a specific mood. Be decisive!`;
-
-  // build messages array for Gemini
-  // Gemini needs alternating user/model, no consecutive same roles
+  // build contents (fix alternating roles for Gemini)
   const rawHistory = history.rows.map(m => ({
     role: m.role === 'user' ? 'user' : 'model',
     parts: [{ text: m.content }]
@@ -184,42 +286,8 @@ Always pick a specific mood. Be decisive!`;
   }
 
   try {
-    console.log('Calling Gemini API...');
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
-        })
-      }
-    );
-
-    const data = await geminiRes.json();
-    console.log('Gemini response status:', geminiRes.status);
-
-    if (data.error) {
-      console.error('Gemini error:', data.error);
-      return res.status(500).json({ error: 'Gemini API error: ' + data.error.message });
-    }
-
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('Raw response length:', raw.length);
-
-    // extract JSON mood
-    const jsonMatch = raw.match(/\{[\s\S]*?"mood"[\s\S]*?\}/);
-    let mood = 'default', moodLabel = '';
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        mood = parsed.mood || 'default';
-        moodLabel = parsed.moodLabel || '';
-      } catch(e) {}
-    }
-    const answer = raw.replace(/\{[\s\S]*?"mood"[\s\S]*?\}/, '').trim();
+    const raw = await callAI(contents, buildSystemPrompt(currentMood));
+    const { answer, mood, moodLabel } = parseResponse(raw);
 
     // save AI message
     await pool.query(
@@ -227,7 +295,8 @@ Always pick a specific mood. Be decisive!`;
       [conversationId, 'assistant', answer, mood, moodLabel]
     );
 
-    // update conversation title from first message
+    // update conversation mood + title
+    await pool.query('UPDATE conversations SET current_mood = $1 WHERE id = $2', [mood, conversationId]);
     const count = await pool.query('SELECT COUNT(*) FROM messages WHERE conversation_id = $1', [conversationId]);
     if (parseInt(count.rows[0].count) <= 2) {
       const title = message.length > 40 ? message.substring(0, 40) + '...' : message;
@@ -235,9 +304,26 @@ Always pick a specific mood. Be decisive!`;
     }
 
     res.json({ answer, mood, moodLabel });
+
   } catch(e) {
-    console.error('Chat error:', e.message);
-    res.status(500).json({ error: e.message });
+    // never reveal which AI failed — always show friendly message
+    console.error('All AI services failed:', e.message);
+
+    const friendlyMessages = [
+      "I'm having a moment of deep thought... Please try again!",
+      "The network seems a bit busy right now. Try again in a moment!",
+      "I'm gathering my thoughts. Please send that again!",
+      "Connection hiccup! Please try once more.",
+    ];
+    const friendly = friendlyMessages[Math.floor(Math.random() * friendlyMessages.length)];
+
+    // save friendly message so chat history looks clean
+    await pool.query(
+      'INSERT INTO messages (conversation_id, role, content, mood, mood_label) VALUES ($1, $2, $3, $4, $5)',
+      [conversationId, 'assistant', friendly, currentMood, '']
+    );
+
+    res.json({ answer: friendly, mood: currentMood, moodLabel: '' });
   }
 });
 
