@@ -77,9 +77,9 @@ MOOD_JSON_END
 The JSON must have these exact keys with creative values matching the topic:
 - moodLabel: 2-4 word poetic vibe description
 - emoji: single emoji perfectly matching topic
-- bgColor1: MUST be a hex color matching topic emotion
-- bgColor2: MUST be a hex color 
-- bgColor3: MUST be a hex color
+- bgColor1: MUST be a Dark hex color matching topic emotion
+- bgColor2: MUST be a Dark hex color 
+- bgColor3: MUST be a Dark hex color
 - borderColor: bright vibrant hex color matching topic
 - glowRGB: R,G,B numbers matching borderColor`;
 }
