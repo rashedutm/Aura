@@ -105,9 +105,9 @@ async function callGemini(contents, systemPrompt) {
     }
   );
   const data = await res.json();
-  if (data.error) throw new Error('gemini_error');
+  if (data.error) { console.error('Gemini error detail:', JSON.stringify(data.error)); throw new Error('gemini_error'); }
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  if (!text) throw new Error('gemini_empty');
+  if (!text) { console.error('Gemini empty response:', JSON.stringify(data)); throw new Error('gemini_empty'); }
   return text;
 }
 
@@ -120,7 +120,7 @@ async function callGroq(messages, systemPrompt) {
       'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
     },
     body: JSON.stringify({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages.map(m => ({
@@ -133,9 +133,9 @@ async function callGroq(messages, systemPrompt) {
     })
   });
   const data = await res.json();
-  if (data.error) throw new Error('groq_error');
+  if (data.error) { console.error('Groq error detail:', JSON.stringify(data.error)); throw new Error('groq_error'); }
   const text = data.choices?.[0]?.message?.content || '';
-  if (!text) throw new Error('groq_empty');
+  if (!text) { console.error('Groq empty response:', JSON.stringify(data)); throw new Error('groq_empty'); }
   return text;
 }
 
