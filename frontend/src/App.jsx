@@ -199,7 +199,7 @@ export default function App() {
 
   // MAIN APP
   return (
-    <div style={{ height:"100%", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
+    <div style={{ height:"100dvh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
       {/* ANIMATED BG */}
       <div style={{ position:"fixed", inset:0, zIndex:0,

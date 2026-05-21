@@ -2,7 +2,7 @@
 
 html, body, #root {
   height: 100%;
-  height: -webkit-fill-available;
+  height: 100dvh;
   overflow: hidden;
   font-family: 'DM Sans', sans-serif;
   color: #e8e8f0;
@@ -99,5 +99,10 @@ html, body, #root {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   body {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@supports (-webkit-touch-callout: none) {
+  html, body, #root {
+    height: -webkit-fill-available;
   }
 }
