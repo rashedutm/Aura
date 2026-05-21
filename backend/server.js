@@ -76,30 +76,12 @@ MOOD_JSON_END
 
 The JSON must have these exact keys with creative values matching the topic:
 - moodLabel: 2-4 word poetic vibe description
-- emoji: single emoji perfectly matching topic (NOT ✨ unless truly magical)
-- bgColor1: MUST be a DIFFERENT dark hex color matching topic emotion (NOT #0d0d2b)
-- bgColor2: MUST be a DIFFERENT dark hex color (NOT #1a1040)  
-- bgColor3: MUST be a DIFFERENT dark hex color (NOT #0d1a2b)
-- borderColor: bright vibrant hex color matching topic (NOT #7c6aff unless tech/default)
-- glowRGB: R,G,B numbers matching borderColor
-
-REQUIRED color examples you MUST follow:
-ocean/water/sea = bgColors: #001828,#00101e,#001520 border: #00cfff glow: 0,207,255 emoji: 🌊
-love/romance = bgColors: #2a0015,#1a000d,#3a0020 border: #ff4d8f glow: 255,77,143 emoji: 💕
-space/stars/moon = bgColors: #000510,#000520,#001030 border: #00cfff glow: 0,207,255 emoji: 🌙
-nature/forest = bgColors: #001a05,#0a2010,#002010 border: #39d353 glow: 57,211,83 emoji: 🍃
-fire/motivation = bgColors: #200800,#300500,#180a00 border: #ff6200 glow: 255,98,0 emoji: 🔥
-mystery/unknown = bgColors: #0d0020,#150010,#05001a border: #bf5fff glow: 191,95,255 emoji: 🔮
-happy/fun/joke = bgColors: #1a1500,#201800,#150f00 border: #ffd500 glow: 255,213,0 emoji: 😄
-sad/grief = bgColors: #000818,#000510,#000a20 border: #4a6fa5 glow: 74,111,165 emoji: 🌧️
-tech/coding/AI = bgColors: #001510,#00100a,#001a10 border: #00ff9d glow: 0,255,157 emoji: 💻
-food/cooking = bgColors: #1a0800,#200a00,#150600 border: #ff8800 glow: 255,136,0 emoji: 🍜
-music/songs = bgColors: #1a001a,#100010,#200020 border: #e040fb glow: 224,64,251 emoji: 🎵
-money/finance = bgColors: #001a00,#002000,#001500 border: #00e676 glow: 0,230,118 emoji: 💰
-curious/question = bgColors: #1a1020,#100a1a,#0d0820 border: #aa80ff glow: 170,128,255 emoji: 🤔
-
-NEVER use these default values for bgColor: #0d0d2b #1a1040 #0d1a2b
-ALWAYS pick colors from the examples above or create similar ones matching the emotion!`;
+- emoji: single emoji perfectly matching topic
+- bgColor1: MUST be a hex color matching topic emotion
+- bgColor2: MUST be a hex color 
+- bgColor3: MUST be a hex color
+- borderColor: bright vibrant hex color matching topic
+- glowRGB: R,G,B numbers matching borderColor`;
 }
 
 // ── GEMINI API CALL ──
