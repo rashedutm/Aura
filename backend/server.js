@@ -254,27 +254,38 @@ function parseResponse(raw) {
   let moodData = { ...DEFAULT };
   let answer = raw;
 
+  // fix unquoted emojis: "emoji": 😄 → "emoji": "😄"
+  function fixJSON(str) {
+    return str.replace(/"emoji"\s*:\s*([^"\s,}][^,}]*?)([,}])/g, (match, val, end) => {
+      const trimmed = val.trim();
+      if (trimmed.startsWith('"')) return match; // already quoted
+      return `"emoji": "${trimmed}"${end}`;
+    });
+  }
+
   // try MOOD_JSON_START/END markers first
   const markerMatch = raw.match(/MOOD_JSON_START\s*([\s\S]*?)\s*MOOD_JSON_END/);
   if (markerMatch) {
     try {
-      const parsed = JSON.parse(markerMatch[1].trim());
+      const fixed = fixJSON(markerMatch[1].trim());
+      const parsed = JSON.parse(fixed);
       moodData = { ...DEFAULT, ...parsed };
       answer = raw.replace(/MOOD_JSON_START[\s\S]*?MOOD_JSON_END/, '').trim();
       console.log('Parsed mood:', JSON.stringify(moodData));
       return { answer, moodData };
-    } catch(e) { console.error('Marker JSON parse error:', markerMatch[1]); }
+    } catch(e) { console.error('Marker JSON parse error:', e.message); }
   }
 
-  // fallback: find any JSON with moodLabel
-  const jsonMatch = raw.match(/\{[^{}]*"moodLabel"[^{}]*\}/);
+  // fallback: find any JSON block with moodLabel
+  const jsonMatch = raw.match(/\{[\s\S]*?"moodLabel"[\s\S]*?\}/);
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const fixed = fixJSON(jsonMatch[0]);
+      const parsed = JSON.parse(fixed);
       moodData = { ...DEFAULT, ...parsed };
       answer = raw.replace(jsonMatch[0], '').trim();
       console.log('Parsed mood fallback:', JSON.stringify(moodData));
-    } catch(e) { console.error('JSON parse error:', jsonMatch[0]); }
+    } catch(e) { console.error('JSON parse error:', e.message); }
   }
 
   return { answer, moodData };
@@ -390,11 +401,8 @@ app.post('/chat', auth, async (req, res) => {
 
   try {
     const raw = await callAI(contents, buildSystemPrompt(currentMoodData));
-    console.log('=== RAW AI RESPONSE ===');
-    console.log(raw);
-    console.log('=== END RAW RESPONSE ===');
     const { answer, moodData } = parseResponse(raw);
-    console.log('=== PARSED MOOD ===', JSON.stringify(moodData));
+    console.log('Parsed mood:', JSON.stringify(moodData));
 
     // save AI message
     await pool.query(
