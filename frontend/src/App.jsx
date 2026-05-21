@@ -300,7 +300,7 @@ export default function App() {
 
             {/* MESSAGES */}
             {messages.map((msg, i) => (
-              <div key={msg.id||i} style={{ display:"flex", gap:"0.5rem", flexDirection: msg.role==="user" ? "row-reverse" : "row", animation:"fadeUp 0.35s ease" }}>
+              <div key={msg.id||i} style={{ display:"flex", gap:"0.3rem", flexDirection: msg.role==="user" ? "row-reverse" : "row", animation:"fadeUp 0.35s ease" }}>
                 <div style={{ width:"32px", height:"32px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: msg.role==="user" ? "0.9rem" : "0.65rem", fontFamily:"Syne,sans-serif", fontWeight:800, color:"#fff", background: msg.role==="user" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg,#7c6aff,#c084fc)`, boxShadow: msg.role!=="user" ? `0 0 16px rgba(124,106,255,0.5)` : "none", flexBasis:"32px" }}>
                   {msg.role==="user" ? "👤" : "AU"}
                 </div>
