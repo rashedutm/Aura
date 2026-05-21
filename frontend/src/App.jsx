@@ -346,7 +346,6 @@ export default function App() {
                 </button>
               </div>
             </ElectricBorder>
-            <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
       </div>
