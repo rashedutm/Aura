@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ElectricBorder from "./ElectricBorder";
+import AdminDashboard from "./AdminDashboard";
 import PeekingCreature from "./PeekingCreature";
 import MagicRings from "./MagicRings";
 
@@ -35,6 +36,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -101,6 +103,7 @@ export default function App() {
   async function handleAuth(e) {
     e.preventDefault();
     setAuthError("");
+    setAuthLoading(true);
     try {
       const data = await apiFetch(`/${authMode}`, { method: "POST", body: JSON.stringify(authForm) });
       localStorage.setItem("aura_token", data.token);
@@ -108,6 +111,7 @@ export default function App() {
       setToken(data.token);
       setUsername(data.username);
     } catch (err) { setAuthError(err.message); }
+    setAuthLoading(false);
   }
 
   function logout() {
@@ -162,6 +166,9 @@ export default function App() {
     if (activeConv?.id === id) { setActiveConv(null); setMessages([]); }
   }
 
+  // ADMIN ROUTE
+  if (window.location.pathname === "/admin") return <AdminDashboard />;
+
   // AUTH SCREEN
   if (!token) return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
@@ -189,8 +196,8 @@ export default function App() {
               <input key={field} type={field==="password"?"password":"text"} placeholder={field.charAt(0).toUpperCase()+field.slice(1)} value={authForm[field]} onChange={e => setAuthForm(p => ({...p,[field]:e.target.value}))} style={{ padding:"0.85rem 1rem", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:"12px", color:"#fff", fontFamily:"DM Sans,sans-serif", fontSize:"0.9rem", outline:"none", transition:"border-color 0.2s" }} onFocus={e => e.target.style.borderColor="rgba(124,106,255,0.6)"} onBlur={e => e.target.style.borderColor="rgba(255,255,255,0.09)"} />
             ))}
             {authError && <div style={{ color:"#ff6b8a", fontSize:"0.82rem", textAlign:"center", padding:"0.4rem", background:"rgba(255,107,138,0.1)", borderRadius:"8px" }}>{authError}</div>}
-            <button type="submit" style={{ padding:"0.9rem", background:"linear-gradient(135deg,#7c6aff,#c084fc)", border:"none", borderRadius:"12px", color:"#fff", fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.95rem", cursor:"pointer", marginTop:"0.3rem", letterSpacing:"0.05em", boxShadow:"0 4px 20px rgba(124,106,255,0.4)" }}>
-              {authMode==="login" ? "Enter AURA →" : "Create Account →"}
+            <button type="submit" disabled={authLoading} style={{ padding:"0.9rem", background: authLoading ? "rgba(124,106,255,0.5)" : "linear-gradient(135deg,#7c6aff,#c084fc)", border:"none", borderRadius:"12px", color:"#fff", fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.95rem", cursor: authLoading ? "not-allowed" : "pointer", marginTop:"0.3rem", letterSpacing:"0.05em", boxShadow:"0 4px 20px rgba(124,106,255,0.4)", transition:"all 0.2s" }}>
+              {authLoading ? "Please wait..." : authMode==="login" ? "Enter AURA →" : "Create Account →"}
             </button>
           </form>
         </div>
