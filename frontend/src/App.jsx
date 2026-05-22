@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ElectricBorder from "./ElectricBorder";
+import PeekingCreature from "./PeekingCreature";
 import MagicRings from "./MagicRings";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -199,7 +200,7 @@ export default function App() {
 
   // MAIN APP
   return (
-    <div style={{ height:"100dvh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
+    <div style={{ height:"100vh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
       {/* ANIMATED BG */}
       <div style={{ position:"fixed", inset:0, zIndex:0,
@@ -330,7 +331,7 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ paddingTop:"0.8rem", paddingLeft:"clamp(0.8rem, 4vw, 3rem)", paddingRight:"clamp(0.8rem, 4vw, 3rem)", paddingBottom:"max(calc(env(safe-area-inset-bottom) + 0.8rem), 1.2rem)", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) max(1.2rem, env(safe-area-inset-bottom, 1.2rem))", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <ElectricBorder
               color={m.borderColor}
@@ -346,9 +347,12 @@ export default function App() {
                 </button>
               </div>
             </ElectricBorder>
+            <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
       </div>
+    {/* PEEKING CREATURE */}
+    <PeekingCreature glowRGB={m.glowRGB} borderColor={m.borderColor} />
     </div>
   );
 }
