@@ -5,47 +5,47 @@ import peekDownAnim from "./peekDown.json";
 
 const CORNERS = ["bottom-left", "bottom-right", "top-left", "top-right"];
 
+// tracks last corner to avoid repeating
+let lastCorner = "";
+
+function pickCorner() {
+  const available = CORNERS.filter(c => c !== lastCorner);
+  const picked = available[Math.floor(Math.random() * available.length)];
+  lastCorner = picked;
+  return picked;
+}
+
 export default function PeekingCreature({ glowRGB = "124,106,255" }) {
   const [show,   setShow]   = useState(false);
   const [corner, setCorner] = useState("bottom-left");
-  const [out,    setOut]    = useState(true);
+  const [phase,  setPhase]  = useState("out"); // out | in | jumping-out
   const playerRef = useRef(null);
   const timers    = useRef([]);
   const idleRef   = useRef(null);
 
-  const clearAll = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-  };
-
-  const after = (fn, ms) => {
-    const t = setTimeout(fn, ms);
-    timers.current.push(t);
-  };
+  const clearAll = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  const after = (fn, ms) => { const t = setTimeout(fn, ms); timers.current.push(t); };
 
   const runSequence = useCallback(() => {
     clearAll();
-    const c = CORNERS[Math.floor(Math.random() * CORNERS.length)];
+    const c = pickCorner();
     setCorner(c);
-    setOut(true);
+    setPhase("out");
     setShow(true);
 
-    // slide in
-    after(() => setOut(false), 50);
+    // small delay then slide in
+    after(() => setPhase("in"), 80);
 
-    // play animation after slide in completes
+    // play animation after slide-in
     after(() => {
-      if (playerRef.current) {
-        playerRef.current.stop();
-        playerRef.current.play();
-      }
-    }, 800);
+      if (playerRef.current) { playerRef.current.stop(); playerRef.current.play(); }
+    }, 850);
 
-    // slide out
-    after(() => setOut(true), 5200);
+    // jump back out (same corner it came from)
+    after(() => setPhase("jumping-out"), 5000);
 
-    // hide completely
-    after(() => setShow(false), 5900);
+    // hide after jump completes
+    after(() => { setShow(false); setPhase("out"); }, 5700);
   }, []);
 
   const scheduleNext = useCallback(() => {
@@ -55,7 +55,7 @@ export default function PeekingCreature({ glowRGB = "124,106,255" }) {
 
   useEffect(() => {
     idleRef.current = setTimeout(runSequence, 16000);
-    const act = () => scheduleNext();
+    const act = () => { if (phase === "out" && !show) scheduleNext(); };
     window.addEventListener("keydown",    act);
     window.addEventListener("click",      act);
     window.addEventListener("touchstart", act);
@@ -66,38 +66,48 @@ export default function PeekingCreature({ glowRGB = "124,106,255" }) {
       window.removeEventListener("click",      act);
       window.removeEventListener("touchstart", act);
     };
-  }, [runSequence, scheduleNext]);
+  }, [phase, show, runSequence, scheduleNext]);
 
   useEffect(() => {
-    if (!show) scheduleNext();
-  }, [show, scheduleNext]);
+    if (!show && phase === "out") scheduleNext();
+  }, [show, phase, scheduleNext]);
 
   if (!show) return null;
 
   const isBottom = corner === "bottom-left" || corner === "bottom-right";
   const isRight  = corner === "bottom-right" || corner === "top-right";
+  const isIn     = phase === "in";
+  const isJumpOut = phase === "jumping-out";
 
-  // pupils look UP for bottom corners, DOWN for top corners
+  // slide values: when out/jumping-out push off screen, when in = 0
+  const offX = isRight ? "110%" : "-110%";
+  const offY = isBottom ? "65%"  : "-65%";
+
+  const tx = isIn ? "0%" : offX;
+  const ty = isIn ? "0%" : offY;
+
+  // jump-out uses fast bouncy ease, slide-in uses spring, hidden = instant
+  const transition = isJumpOut
+    ? "transform 0.5s cubic-bezier(0.55,0,0.7,0.4), opacity 0.3s ease 0.1s"
+    : isIn
+    ? "none"
+    : "transform 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease";
+
+  // pupils look up for bottom, down for top
   const animSrc = isBottom ? peekUpAnim : peekDownAnim;
-
-  // slide direction — push off screen edge when out
-  const slideX = isRight ? (out ? "100%" : "0%") : (out ? "-100%" : "0%");
-  const slideY = isBottom ? (out ? "60%"  : "0%") : (out ? "-60%"  : "0%");
 
   return (
     <div style={{
-      position:   "fixed",
-      zIndex:     999,
-      width:      "160px",
-      height:     "160px",
+      position:      "fixed",
+      zIndex:        999,
+      width:         "160px",
+      height:        "160px",
       pointerEvents: "none",
-      ...(isBottom ? { bottom: 0 } : { top: 0 }),
-      ...(isRight  ? { right:  0 } : { left: 0 }),
-      transform:  `translate(${slideX}, ${slideY}) scaleX(${isRight ? -1 : 1})`,
-      transition: out
-        ? "transform 0.55s cubic-bezier(0.55,0,1,0.45), opacity 0.3s ease"
-        : "transform 0.65s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease",
-      opacity:    out ? 0 : 1,
+      ...(isBottom ? { bottom: 0 } : { top:   0 }),
+      ...(isRight  ? { right:  0 } : { left:  0 }),
+      transform:  `translate(${tx}, ${ty}) scaleX(${isRight ? -1 : 1})`,
+      transition,
+      opacity:    isIn ? 1 : 0,
       filter:     `drop-shadow(0 0 14px rgba(${glowRGB},0.6))`,
     }}>
       <Player
