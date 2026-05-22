@@ -171,7 +171,7 @@ export default function App() {
 
   // AUTH SCREEN
   if (!token) return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
+    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
       <div style={{ position:"fixed", inset:0, background:"#07070f" }} />
       {/* MAGIC RINGS BACKGROUND */}
       <div style={{ position:"fixed", inset:0, zIndex:1 }}>
@@ -207,7 +207,7 @@ export default function App() {
 
   // MAIN APP
   return (
-    <div style={{ height:"100vh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
+    <div style={{ height:"100dvh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
       {/* ANIMATED BG */}
       <div style={{ position:"fixed", inset:0, zIndex:0,
@@ -338,7 +338,7 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) max(1.2rem, env(safe-area-inset-bottom, 1.2rem))", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+        <div style={{ paddingTop:"0.8rem", paddingLeft:"clamp(0.8rem, 4vw, 3rem)", paddingRight:"clamp(0.8rem, 4vw, 3rem)", paddingBottom:"max(calc(env(safe-area-inset-bottom) + 0.8rem), 1.2rem)", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <ElectricBorder
               color={m.borderColor}
