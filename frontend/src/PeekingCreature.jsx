@@ -1,246 +1,202 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-// picks a random corner each time
 const CORNERS = ["bottom-left", "bottom-right", "top-left", "top-right"];
 
-function getCornerStyle(corner, visible) {
-  const base = {
-    position: "fixed",
-    zIndex: 999,
-    pointerEvents: "none",
-    width: "90px",
-    height: "110px",
-    transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease",
-  };
-
-  const transforms = {
-    "bottom-left":  { bottom: 0, left: 0,  transformOrigin: "bottom left",  transform: visible ? "translate(8px, -8px)"  : "translate(-80px, 80px)" },
-    "bottom-right": { bottom: 0, right: 0, transformOrigin: "bottom right", transform: visible ? "translate(-8px, -8px)" : "translate(80px, 80px)"  },
-    "top-left":     { top: 0,    left: 0,  transformOrigin: "top left",     transform: visible ? "translate(8px, 8px)"   : "translate(-80px, -80px)"},
-    "top-right":    { top: 0,    right: 0, transformOrigin: "top right",    transform: visible ? "translate(-8px, 8px)"  : "translate(80px, -80px)" },
-  };
-
-  return { ...base, ...transforms[corner], opacity: visible ? 1 : 0 };
-}
-
 export default function PeekingCreature({ glowRGB = "124,106,255", borderColor = "#7c6aff" }) {
-  const [visible, setVisible] = useState(false);
-  const [corner, setCorner] = useState("bottom-right");
-  const [phase, setPhase] = useState("idle"); // idle | peeking | waving | hiding
-  const idleTimer = useRef(null);
+  const [visible, setVisible]   = useState(false);
+  const [corner, setCorner]     = useState("bottom-right");
+  const [phase, setPhase]       = useState("hidden");
+  const idleTimer  = useRef(null);
   const phaseTimer = useRef(null);
 
-  const startSequence = useCallback(() => {
-    // pick random corner
+  // phase flow: hidden → sliding-in → peeking → looking-left → looking-right → looking-at-you → waving → sliding-out → hidden
+  const runSequence = useCallback(() => {
     const c = CORNERS[Math.floor(Math.random() * CORNERS.length)];
     setCorner(c);
-    setPhase("peeking");
+    setPhase("sliding-in");
     setVisible(true);
 
-    // wave after 0.8s
-    phaseTimer.current = setTimeout(() => {
-      setPhase("waving");
-
-      // hide after 2s of waving
-      phaseTimer.current = setTimeout(() => {
-        setPhase("hiding");
-        setVisible(false);
-
-        // reset phase after hide animation
-        phaseTimer.current = setTimeout(() => {
-          setPhase("idle");
-        }, 700);
-      }, 2000);
-    }, 800);
+    phaseTimer.current = setTimeout(() => setPhase("peeking"),        700);
+    phaseTimer.current = setTimeout(() => setPhase("looking-left"),  1400);
+    phaseTimer.current = setTimeout(() => setPhase("looking-right"), 2200);
+    phaseTimer.current = setTimeout(() => setPhase("looking-at-you"),3000);
+    phaseTimer.current = setTimeout(() => setPhase("waving"),        3800);
+    phaseTimer.current = setTimeout(() => setPhase("sliding-out"),   5600);
+    phaseTimer.current = setTimeout(() => { setVisible(false); setPhase("hidden"); }, 6400);
   }, []);
 
-  const resetIdleTimer = useCallback(() => {
+  const scheduleNext = useCallback(() => {
     clearTimeout(idleTimer.current);
-    clearTimeout(phaseTimer.current);
-    if (visible) {
-      setVisible(false);
-      setPhase("idle");
-    }
-    // appear after 12 seconds of no typing
-    idleTimer.current = setTimeout(() => {
-      startSequence();
-    }, 12000);
-  }, [visible, startSequence]);
+    idleTimer.current = setTimeout(runSequence, 14000);
+  }, [runSequence]);
 
   useEffect(() => {
-    // start initial timer
-    idleTimer.current = setTimeout(startSequence, 15000);
-
-    const handleActivity = () => resetIdleTimer();
-    window.addEventListener("keydown", handleActivity);
-    window.addEventListener("click", handleActivity);
-    window.addEventListener("touchstart", handleActivity);
-
+    idleTimer.current = setTimeout(runSequence, 16000);
+    const reset = () => {
+      if (phase === "hidden") scheduleNext();
+    };
+    window.addEventListener("keydown", reset);
+    window.addEventListener("click", reset);
+    window.addEventListener("touchstart", reset);
     return () => {
       clearTimeout(idleTimer.current);
       clearTimeout(phaseTimer.current);
-      window.removeEventListener("keydown", handleActivity);
-      window.removeEventListener("click", handleActivity);
-      window.removeEventListener("touchstart", handleActivity);
+      window.removeEventListener("keydown", reset);
+      window.removeEventListener("click", reset);
+      window.removeEventListener("touchstart", reset);
     };
-  }, [resetIdleTimer, startSequence]);
+  }, [phase, runSequence, scheduleNext]);
 
-  // which corner determines flip
-  const flipX = corner === "bottom-right" || corner === "top-right" ? -1 : 1;
-  const flipY = corner === "top-left" || corner === "top-right" ? -1 : 1;
+  // schedule next after hiding
+  useEffect(() => {
+    if (phase === "hidden" && !visible) scheduleNext();
+  }, [phase, visible, scheduleNext]);
+
+  // corner position + slide direction
+  const isRight  = corner === "bottom-right" || corner === "top-right";
+  const isBottom = corner === "bottom-left"  || corner === "bottom-right";
+  const isOut    = phase === "hidden" || phase === "sliding-out";
+  const isIn     = phase === "sliding-in";
+
+  // translate offsets
+  const tx = isRight
+    ? (isOut || isIn ? (isOut ? 100 : 100) : -8)
+    : (isOut || isIn ? (isOut ? -100 : -100) : 8);
+  const ty = isBottom
+    ? (isOut || isIn ? 100 : -8)
+    : (isOut || isIn ? -100 : 8);
+
+  const posStyle = {
+    position:   "fixed",
+    zIndex:     999,
+    width:      "100px",
+    height:     "120px",
+    pointerEvents: "none",
+    transition: isOut ? "transform 0.5s cubic-bezier(0.4,0,0.8,0.6), opacity 0.4s ease"
+                      : "transform 0.7s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease",
+    opacity:    visible && phase !== "sliding-out" ? 1 : 0,
+    transform:  `translate(${tx}%, ${ty}%)`,
+    ...(isRight  ? { right: 0 } : { left: 0 }),
+    ...(isBottom ? { bottom: 0 } : { top: 0 }),
+  };
+
+  // eye look directions
+  const eyeOffset = phase === "looking-left"
+    ? { lx: -4, ly: 0, rx: -4, ry: 0 }
+    : phase === "looking-right"
+    ? { lx: 4, ly: 0, rx: 4, ry: 0 }
+    : phase === "looking-at-you" || phase === "waving"
+    ? { lx: 0, ly: -2, rx: 0, ry: -2 }
+    : { lx: 0, ly: 2, rx: 0, ry: 2 };
+
+  const isWaving    = phase === "waving";
+  const isHappy     = phase === "waving" || phase === "looking-at-you";
+  const flipX       = isRight ? -1 : 1;
+  const flipY       = isBottom ? 1 : -1;
 
   return (
-    <div style={getCornerStyle(corner, visible)}>
+    <div style={posStyle}>
       <svg
-        viewBox="0 0 90 110"
+        viewBox="0 0 100 120"
         xmlns="http://www.w3.org/2000/svg"
         style={{
-          width: "100%",
-          height: "100%",
+          width: "100%", height: "100%",
           transform: `scale(${flipX}, ${flipY})`,
-          filter: `drop-shadow(0 0 12px rgba(${glowRGB},0.6))`,
+          filter: `drop-shadow(0 0 10px rgba(${glowRGB},0.5))`,
           overflow: "visible",
         }}
       >
         <defs>
-          <radialGradient id="bodyGrad" cx="50%" cy="40%" r="60%">
-            <stop offset="0%" stopColor="#c084fc" />
-            <stop offset="100%" stopColor="#7c6aff" />
+          <radialGradient id="pc-body" cx="45%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#d580ff" />
+            <stop offset="100%" stopColor="#7c3aed" />
           </radialGradient>
-          <radialGradient id="bellyGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.25)" />
+          <radialGradient id="pc-belly" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
             <stop offset="100%" stopColor="rgba(255,255,255,0)" />
           </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
         </defs>
 
-        {/* HAND on edge (always visible as part of peek) */}
-        <g style={{ opacity: visible ? 1 : 0, transition: "opacity 0.3s ease" }}>
-          {/* arm */}
-          <path
-            d="M 30 85 Q 15 80 8 72"
-            stroke="#9d6fe8"
-            strokeWidth="8"
-            strokeLinecap="round"
-            fill="none"
-          />
-          {/* hand/paw */}
-          <circle cx="8" cy="70" r="7" fill="#c084fc" />
-          {/* fingers */}
-          <circle cx="3"  cy="64" r="3.5" fill="#c084fc" />
-          <circle cx="10" cy="62" r="3.5" fill="#c084fc" />
-          <circle cx="16" cy="65" r="3" fill="#c084fc" />
+        {/* HAND gripping edge */}
+        <g>
+          <path d="M 32 95 Q 16 88 8 78" stroke="#9d6fe8" strokeWidth="7" strokeLinecap="round" fill="none"/>
+          <circle cx="7" cy="76" r="7" fill="#c084fc"/>
+          <circle cx="1"  cy="69" r="3.5" fill="#c084fc"/>
+          <circle cx="9"  cy="67" r="3.5" fill="#c084fc"/>
+          <circle cx="15" cy="71" r="3" fill="#c084fc"/>
         </g>
 
-        {/* BODY — cute blob */}
-        <ellipse
-          cx="52"
-          cy="72"
-          rx="30"
-          ry="32"
-          fill="url(#bodyGrad)"
-          filter="url(#glow)"
-        />
-
-        {/* belly shine */}
-        <ellipse cx="52" cy="68" rx="16" ry="18" fill="url(#bellyGrad)" />
+        {/* BODY */}
+        <ellipse cx="55" cy="88" rx="28" ry="26" fill="url(#pc-body)"/>
+        <ellipse cx="55" cy="84" rx="15" ry="16" fill="url(#pc-belly)"/>
 
         {/* HEAD */}
-        <circle
-          cx="52"
-          cy="46"
-          r="28"
-          fill="url(#bodyGrad)"
-          filter="url(#glow)"
-        />
+        <circle cx="55" cy="55" r="32" fill="url(#pc-body)"/>
 
         {/* head shine */}
-        <ellipse cx="44" cy="36" rx="10" ry="7" fill="rgba(255,255,255,0.18)" transform="rotate(-20,44,36)" />
+        <ellipse cx="44" cy="42" rx="11" ry="7" fill="rgba(255,255,255,0.2)" transform="rotate(-20,44,42)"/>
 
-        {/* EYES */}
-        {/* left eye white */}
-        <ellipse cx="42" cy="44" rx="8" ry="9" fill="white" />
-        {/* right eye white */}
-        <ellipse cx="62" cy="44" rx="8" ry="9" fill="white" />
-        {/* left pupil */}
-        <circle cx="43" cy="46" r="5" fill="#1a1040" />
-        {/* right pupil */}
-        <circle cx="63" cy="46" r="5" fill="#1a1040" />
-        {/* left eye shine */}
-        <circle cx="45" cy="43" r="2" fill="white" />
-        {/* right eye shine */}
-        <circle cx="65" cy="43" r="2" fill="white" />
-        {/* left eye blink line (shown when waving) */}
-        {phase === "waving" && (
-          <path d="M 35 44 Q 42 38 49 44" stroke="#1a1040" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        )}
-        {phase === "waving" && (
-          <path d="M 55 44 Q 62 38 69 44" stroke="#1a1040" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        )}
+        {/* EARS */}
+        <ellipse cx="33" cy="28" rx="7" ry="10" fill="#9b59d0" transform="rotate(-15,33,28)"/>
+        <ellipse cx="77" cy="28" rx="7" ry="10" fill="#9b59d0" transform="rotate(15,77,28)"/>
+        <ellipse cx="33" cy="28" rx="4"  cy2="28" ry="6"  fill="#e040fb" transform="rotate(-15,33,28)"/>
+        <ellipse cx="77" cy="28" rx="4"  ry="6"  fill="#e040fb" transform="rotate(15,77,28)"/>
 
-        {/* SMILE */}
+        {/* LEFT EYE */}
+        <ellipse cx="43" cy="53" rx="9" ry={isHappy ? 6 : 10} fill="white"/>
+        {!isHappy && <circle cx={43 + eyeOffset.lx} cy={53 + eyeOffset.ly} r="5.5" fill="#1a0a2e"/>}
+        {!isHappy && <circle cx={44 + eyeOffset.lx} cy={51 + eyeOffset.ly} r="2" fill="white"/>}
+        {isHappy && <path d="M 34 53 Q 43 46 52 53" stroke="#1a0a2e" strokeWidth="2.5" fill="none" strokeLinecap="round"/>}
+
+        {/* RIGHT EYE */}
+        <ellipse cx="67" cy="53" rx="9" ry={isHappy ? 6 : 10} fill="white"/>
+        {!isHappy && <circle cx={67 + eyeOffset.rx} cy={53 + eyeOffset.ry} r="5.5" fill="#1a0a2e"/>}
+        {!isHappy && <circle cx={68 + eyeOffset.rx} cy={51 + eyeOffset.ry} r="2" fill="white"/>}
+        {isHappy && <path d="M 58 53 Q 67 46 76 53" stroke="#1a0a2e" strokeWidth="2.5" fill="none" strokeLinecap="round"/>}
+
+        {/* MOUTH */}
         <path
-          d={phase === "waving" ? "M 42 56 Q 52 64 62 56" : "M 44 55 Q 52 61 60 55"}
-          stroke="#1a1040"
-          strokeWidth="2.5"
-          fill="none"
-          strokeLinecap="round"
+          d={isHappy ? "M 44 67 Q 55 76 66 67" : "M 46 66 Q 55 72 64 66"}
+          stroke="#1a0a2e" strokeWidth="2.5" fill="none" strokeLinecap="round"
         />
 
-        {/* CHEEK BLUSH */}
-        <ellipse cx="36" cy="52" rx="6" ry="4" fill="rgba(255,150,180,0.35)" />
-        <ellipse cx="68" cy="52" rx="6" ry="4" fill="rgba(255,150,180,0.35)" />
+        {/* CHEEKS */}
+        <ellipse cx="35" cy="62" rx="6" ry="4" fill="rgba(255,130,180,0.4)"/>
+        <ellipse cx="75" cy="62" rx="6" ry="4" fill="rgba(255,130,180,0.4)"/>
 
-        {/* EARS / HORNS */}
-        <ellipse cx="34" cy="22" rx="7" ry="10" fill="#9d6fe8" transform="rotate(-15,34,22)" />
-        <ellipse cx="70" cy="22" rx="7" ry="10" fill="#9d6fe8" transform="rotate(15,70,22)" />
-        <ellipse cx="34" cy="22" rx="4" ry="6"  fill="#e040fb" transform="rotate(-15,34,22)" />
-        <ellipse cx="70" cy="22" rx="4" ry="6"  fill="#e040fb" transform="rotate(15,70,22)" />
-
-        {/* WAVING ARM (only during wave phase) */}
-        {(phase === "waving") && (
-          <g style={{ transformOrigin: "70px 65px", animation: "wave 0.5s ease-in-out 3" }}>
-            <path
-              d="M 70 65 Q 82 50 88 38"
-              stroke="#9d6fe8"
-              strokeWidth="8"
-              strokeLinecap="round"
-              fill="none"
-              style={{ animation: "waveArm 0.5s ease-in-out infinite alternate" }}
-            />
-            <circle cx="88" cy="36" r="7" fill="#c084fc" />
-            <circle cx="83" cy="28" r="3.5" fill="#c084fc" />
-            <circle cx="91" cy="29" r="3.5" fill="#c084fc" />
-            <circle cx="95" cy="35" r="3" fill="#c084fc" />
+        {/* WAVING ARM */}
+        {isWaving && (
+          <g style={{ transformOrigin: "75px 75px", animation: "peekWave 0.45s ease-in-out infinite alternate" }}>
+            <path d="M 73 75 Q 85 58 90 44" stroke="#9b59d0" strokeWidth="7" strokeLinecap="round" fill="none"/>
+            <circle cx="90" cy="42" r="7" fill="#c084fc"/>
+            <circle cx="84" cy="34" r="3.5" fill="#c084fc"/>
+            <circle cx="93" cy="33" r="3.5" fill="#c084fc"/>
+            <circle cx="97" cy="40" r="3" fill="#c084fc"/>
           </g>
         )}
 
-        {/* TAIL */}
-        <path
-          d="M 75 88 Q 90 95 85 105"
-          stroke="#9d6fe8"
-          strokeWidth="7"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <circle cx="84" cy="106" r="5" fill="#c084fc" />
-
-        {/* sparkles around when waving */}
-        {phase === "waving" && (
+        {/* SPARKLES when waving */}
+        {isWaving && (
           <>
-            <text x="78" y="18" fontSize="12" style={{ animation: "fadeIn 0.3s ease" }}>✨</text>
-            <text x="20" y="30" fontSize="10" style={{ animation: "fadeIn 0.5s ease" }}>⭐</text>
+            <text x="82" y="22" fontSize="11" style={{ animation: "peekFadeIn 0.3s ease" }}>✨</text>
+            <text x="18" y="38" fontSize="9"  style={{ animation: "peekFadeIn 0.5s ease" }}>⭐</text>
+            <text x="88" y="58" fontSize="8"  style={{ animation: "peekFadeIn 0.7s ease" }}>💫</text>
           </>
         )}
+
+        {/* TAIL */}
+        <path d="M 78 100 Q 94 108 90 118" stroke="#9b59d0" strokeWidth="6" strokeLinecap="round" fill="none"/>
+        <circle cx="89" cy="119" r="5" fill="#c084fc"/>
       </svg>
 
       <style>{`
-        @keyframes waveArm {
-          from { transform: rotate(-15deg); }
-          to   { transform: rotate(15deg); }
+        @keyframes peekWave {
+          from { transform: rotate(-18deg); }
+          to   { transform: rotate(18deg); }
+        }
+        @keyframes peekFadeIn {
+          from { opacity: 0; transform: scale(0.5); }
+          to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
