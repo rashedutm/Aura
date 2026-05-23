@@ -310,6 +310,8 @@ export default function App() {
           top:0,
           zIndex:15,
           transform: headerVisible ? "translateY(0)" : "translateY(-110%)",
+          marginTop: headerVisible ? "0" : "-52px",
+          transition:"transform 0.28s cubic-bezier(0.4,0,0.2,1), -webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1), margin-top 0.28s cubic-bezier(0.4,0,0.2,1)",
           WebkitTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
           MozTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
           msTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
