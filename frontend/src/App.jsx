@@ -325,7 +325,7 @@ export default function App() {
         }}>
           <button onClick={()=>setSidebarOpen(true)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:"0.4rem 0.5rem", flexShrink:0 }}>☰</button>
           <div style={{ flex:1, fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.85rem", color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{activeConv?.title || "AURA"}</div>
-          {moodData?.moodLabel && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {moodData.moodLabel}</div>}
+          {moodData?.moodLabel && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.95 }}>✦ {moodData.moodLabel}</div>}
           <div style={{ width:"7px", height:"7px", borderRadius:"50%", background:"#4fffb0", boxShadow:"0 0 8px #4fffb0", flexShrink:0, animation:"pulse 2s ease-in-out infinite" }} />
         </div>
 
