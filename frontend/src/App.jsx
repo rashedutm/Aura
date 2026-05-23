@@ -45,6 +45,9 @@ export default function App() {
   const [moodData, setMoodData] = useState(DEFAULT_MOOD);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollTimer = useRef(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
   const particlesRef = useRef(null);
@@ -79,6 +82,29 @@ export default function App() {
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  // ── HEADER HIDE ON SCROLL (Facebook style) ──
+  useEffect(() => {
+    const el = chatRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const curr = el.scrollTop;
+      const diff = curr - lastScrollY.current;
+      // scrolling down fast → hide header
+      if (diff > 8 && curr > 60) {
+        setHeaderVisible(false);
+      }
+      // scrolling up → show header
+      if (diff < -5) {
+        setHeaderVisible(true);
+      }
+      lastScrollY.current = curr;
+      // always show header when near top
+      if (curr < 30) setHeaderVisible(true);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -171,7 +197,7 @@ export default function App() {
 
   // AUTH SCREEN
   if (!token) return (
-    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
       <div style={{ position:"fixed", inset:0, background:"#07070f" }} />
       {/* MAGIC RINGS BACKGROUND */}
       <div style={{ position:"fixed", inset:0, zIndex:1 }}>
@@ -207,7 +233,7 @@ export default function App() {
 
   // MAIN APP
   return (
-    <div style={{ height:"100dvh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
+    <div style={{ height:"100vh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
       {/* ANIMATED BG */}
       <div style={{ position:"fixed", inset:0, zIndex:0,
@@ -277,7 +303,7 @@ export default function App() {
       <div style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", zIndex:10, minWidth:0 }}>
 
         {/* HEADER */}
-        <div style={{ padding:"0.9rem 1rem", display:"flex", alignItems:"center", gap:"0.8rem", borderBottom:"1px solid rgba(255,255,255,0.05)", backdropFilter:"blur(10px)", background:"rgba(7,7,15,0.6)", flexShrink:0 }}>
+        <div className="app-header" style={{ padding:"0.9rem 1rem", display:"flex", alignItems:"center", gap:"0.8rem", borderBottom:"1px solid rgba(255,255,255,0.05)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", background:"rgba(7,7,15,0.88)", flexShrink:0, position:"sticky", top:0, zIndex:15, transform: headerVisible ? "translateY(0)" : "translateY(-110%)", transition:"transform 0.28s cubic-bezier(0.4,0,0.2,1)", willChange:"transform", WebkitTransform: headerVisible ? "translateY(0)" : "translateY(-110%)", WebkitTransition:"-webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1)" }}>
           <button onClick={()=>setSidebarOpen(true)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:"0.4rem 0.5rem", flexShrink:0 }}>☰</button>
           <div style={{ flex:1, fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.85rem", color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{activeConv?.title || "AURA"}</div>
           {moodData?.moodLabel && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {moodData.moodLabel}</div>}
@@ -338,7 +364,7 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ paddingTop:"0.8rem", paddingLeft:"clamp(0.8rem, 4vw, 3rem)", paddingRight:"clamp(0.8rem, 4vw, 3rem)", paddingBottom:"max(calc(env(safe-area-inset-bottom) + 0.8rem), 1.2rem)", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) max(1.2rem, env(safe-area-inset-bottom, 1.2rem))", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <ElectricBorder
               color={m.borderColor}
@@ -354,6 +380,7 @@ export default function App() {
                 </button>
               </div>
             </ElectricBorder>
+            <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
       </div>
