@@ -13,6 +13,8 @@ export default function AdminDashboard() {
   const [expanded,     setExpanded]     = useState({});
   const [userConvs,    setUserConvs]    = useState({});
   const [convLoading,  setConvLoading]  = useState({});
+  const [viewingConv,  setViewingConv]  = useState(null); // {id, title, messages}
+  const [msgsLoading,  setMsgsLoading]  = useState(false);
 
   const h = () => ({ "Content-Type": "application/json", "x-admin-key": key });
 
@@ -74,6 +76,18 @@ export default function AdminDashboard() {
     setMsg(`✅ Deleted "${title}"`);
     setUserConvs(p => ({ ...p, [userId]: (p[userId] || []).filter(c => c.id !== convId) }));
     setUsers(p => p.map(u => u.id === userId ? { ...u, conv_count: Math.max(0, u.conv_count - 1) } : u));
+  };
+
+  const viewMessages = async (conv) => {
+    setMsgsLoading(true);
+    setViewingConv({ ...conv, messages: [] });
+    try {
+      const data = await fetch(`${API}/admin/conversations/${conv.id}/messages`, { headers: h() }).then(r => r.json());
+      setViewingConv({ ...conv, messages: Array.isArray(data) ? data : [] });
+    } catch {
+      setViewingConv({ ...conv, messages: [] });
+    }
+    setMsgsLoading(false);
   };
 
   const s = {
@@ -198,6 +212,12 @@ export default function AdminDashboard() {
                         {new Date(conv.created_at).toLocaleDateString()}
                       </span>
                       <button
+                        style={{ ...s.btn, background:"rgba(124,106,255,0.15)", color:"#a78bfa", padding:"0.25rem 0.6rem" }}
+                        onClick={() => viewMessages(conv)}
+                      >
+                        View
+                      </button>
+                      <button
                         style={{ ...s.btn, background:"rgba(255,60,60,0.15)", color:"#ff6b6b", padding:"0.25rem 0.6rem" }}
                         onClick={() => deleteConv(u.id, conv.id, conv.title || "Untitled")}
                       >
@@ -215,6 +235,49 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* CHAT VIEWER MODAL */}
+      {viewingConv && (
+        <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,0.75)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}
+          onClick={() => setViewingConv(null)}>
+          <div style={{ background:"#0f0f1e", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"20px", width:"min(680px,95vw)", maxHeight:"80dvh", display:"flex", flexDirection:"column", overflow:"hidden" }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* modal header */}
+            <div style={{ padding:"1rem 1.2rem", borderBottom:"1px solid rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div>
+                <div style={{ fontWeight:600, fontSize:"0.9rem" }}>💬 {viewingConv.title || "Untitled"}</div>
+                <div style={{ fontSize:"0.72rem", color:"rgba(255,255,255,0.3)", marginTop:"0.2rem" }}>{viewingConv.messages?.length || 0} messages</div>
+              </div>
+              <button onClick={() => setViewingConv(null)} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.4)", cursor:"pointer", fontSize:"1.4rem", lineHeight:1 }}>×</button>
+            </div>
+
+            {/* messages */}
+            <div style={{ flex:1, overflowY:"auto", padding:"1rem 1.2rem", display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+              {msgsLoading && <div style={{ color:"rgba(255,255,255,0.3)", fontSize:"0.85rem", textAlign:"center", padding:"2rem" }}>Loading messages...</div>}
+              {!msgsLoading && viewingConv.messages?.length === 0 && (
+                <div style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.85rem", textAlign:"center", padding:"2rem" }}>No messages</div>
+              )}
+              {(viewingConv.messages || []).map((msg, i) => (
+                <div key={i} style={{ display:"flex", gap:"0.6rem", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
+                  <div style={{ width:"28px", height:"28px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: msg.role === "user" ? "0.8rem" : "0.6rem", fontWeight:800, fontFamily:"Syne,sans-serif", color:"#fff", background: msg.role === "user" ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#7c6aff,#c084fc)" }}>
+                    {msg.role === "user" ? "👤" : "AU"}
+                  </div>
+                  <div style={{ maxWidth:"80%", minWidth:0 }}>
+                    <div style={{ padding:"0.65rem 0.9rem", fontSize:"0.82rem", lineHeight:1.6, borderRadius: msg.role === "user" ? "14px 4px 14px 14px" : "4px 14px 14px 14px", background: msg.role === "user" ? "rgba(124,106,255,0.15)" : "rgba(255,255,255,0.05)", border: msg.role === "user" ? "1px solid rgba(124,106,255,0.2)" : "1px solid rgba(255,255,255,0.06)", wordBreak:"break-word", whiteSpace:"pre-wrap" }}>
+                      {msg.content}
+                    </div>
+                    <div style={{ fontSize:"0.65rem", color:"rgba(255,255,255,0.2)", marginTop:"0.2rem", paddingLeft:"0.2rem" }}>
+                      {new Date(msg.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
