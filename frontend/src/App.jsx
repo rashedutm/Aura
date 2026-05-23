@@ -83,23 +83,16 @@ export default function App() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  // ── HEADER HIDE ON SCROLL (Facebook style) ──
+  // ── HEADER HIDE ON SCROLL ──
   useEffect(() => {
     const el = chatRef.current;
     if (!el) return;
     const onScroll = () => {
       const curr = el.scrollTop;
       const diff = curr - lastScrollY.current;
-      // scrolling down fast → hide header
-      if (diff > 8 && curr > 60) {
-        setHeaderVisible(false);
-      }
-      // scrolling up → show header
-      if (diff < -5) {
-        setHeaderVisible(true);
-      }
+      if (diff > 8 && curr > 60) setHeaderVisible(false);
+      if (diff < -5) setHeaderVisible(true);
       lastScrollY.current = curr;
-      // always show header when near top
       if (curr < 30) setHeaderVisible(true);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -197,7 +190,7 @@ export default function App() {
 
   // AUTH SCREEN
   if (!token) return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
+    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", background:"#07070f", position:"relative", overflowX:"hidden", overflowY:"auto", padding:"1rem 0" }}>
       <div style={{ position:"fixed", inset:0, background:"#07070f" }} />
       {/* MAGIC RINGS BACKGROUND */}
       <div style={{ position:"fixed", inset:0, zIndex:1 }}>
@@ -233,7 +226,7 @@ export default function App() {
 
   // MAIN APP
   return (
-    <div style={{ height:"100vh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
+    <div style={{ height:"100dvh", display:"flex", position:"relative", overflow:"hidden", background:"#07070f" }}>
 
       {/* ANIMATED BG */}
       <div style={{ position:"fixed", inset:0, zIndex:0,
@@ -303,17 +296,37 @@ export default function App() {
       <div style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", zIndex:10, minWidth:0 }}>
 
         {/* HEADER */}
-        <div className="app-header" style={{ padding:"0.9rem 1rem", display:"flex", alignItems:"center", gap:"0.8rem", borderBottom:"1px solid rgba(255,255,255,0.05)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", background:"rgba(7,7,15,0.88)", flexShrink:0, position:"sticky", top:0, zIndex:15, transform: headerVisible ? "translateY(0)" : "translateY(-110%)", transition:"transform 0.28s cubic-bezier(0.4,0,0.2,1)", willChange:"transform", WebkitTransform: headerVisible ? "translateY(0)" : "translateY(-110%)", WebkitTransition:"-webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1)" }}>
+        <div className="app-header" style={{
+          padding:"0.9rem 1rem",
+          display:"flex",
+          alignItems:"center",
+          gap:"0.8rem",
+          borderBottom:"1px solid rgba(255,255,255,0.05)",
+          backdropFilter:"blur(10px)",
+          WebkitBackdropFilter:"blur(10px)",
+          background:"rgba(7,7,15,0.88)",
+          flexShrink:0,
+          position:"sticky",
+          top:0,
+          zIndex:15,
+          transform: headerVisible ? "translateY(0)" : "translateY(-110%)",
+          WebkitTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
+          MozTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
+          msTransform: headerVisible ? "translateY(0)" : "translateY(-110%)",
+          transition:"transform 0.28s cubic-bezier(0.4,0,0.2,1), -webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1)",
+          willChange:"transform",
+          WebkitBackfaceVisibility:"hidden",
+          backfaceVisibility:"hidden",
+        }}>
           <button onClick={()=>setSidebarOpen(true)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"1rem", lineHeight:1, padding:"0.4rem 0.5rem", flexShrink:0 }}>☰</button>
           <div style={{ flex:1, fontFamily:"Syne,sans-serif", fontWeight:700, fontSize:"0.85rem", color:"rgba(255,255,255,0.4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{activeConv?.title || "AURA"}</div>
           {moodData?.moodLabel && <div style={{ fontSize:"0.68rem", color:m.borderColor, letterSpacing:"0.1em", textTransform:"uppercase", flexShrink:0, opacity:0.9 }}>✦ {moodData.moodLabel}</div>}
           <div style={{ width:"7px", height:"7px", borderRadius:"50%", background:"#4fffb0", boxShadow:"0 0 8px #4fffb0", flexShrink:0, animation:"pulse 2s ease-in-out infinite" }} />
         </div>
 
-        {/* CHAT — fully fluid width with padding on sides */}
+        {/* CHAT */}
         <div ref={chatRef} style={{ flex:1, overflowY:"auto", padding:"1.2rem clamp(0.8rem, 4vw, 3rem)", display:"flex", flexDirection:"column", gap:"1rem", scrollbarWidth:"thin", scrollbarColor:"rgba(255,255,255,0.1) transparent" }}>
 
-          {/* inner wrapper — fills width on phone/tablet, capped on laptop+ */}
           <div className="chat-container" style={{ width:"100%", maxWidth:"680px", margin:"0 auto", display:"flex", flexDirection:"column", gap:"1rem" }}>
 
             {/* WELCOME */}
@@ -341,7 +354,6 @@ export default function App() {
                 <div style={{ width:"32px", height:"32px", borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: msg.role==="user" ? "0.9rem" : "0.65rem", fontFamily:"Syne,sans-serif", fontWeight:800, color:"#fff", background: msg.role==="user" ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg,#7c6aff,#c084fc)`, boxShadow: msg.role!=="user" ? `0 0 16px rgba(124,106,255,0.5)` : "none", flexBasis:"32px" }}>
                   {msg.role==="user" ? "👤" : "AU"}
                 </div>
-                {/* bubble grows with available space — no fixed maxWidth */}
                 <div style={{ flex: msg.role==="user" ? "0 1 auto" : "1", minWidth:0, maxWidth: msg.role==="user" ? "80%" : "100%" }}>
                   <div style={{ padding:"0.85rem 1.1rem", lineHeight:1.7, fontSize:"0.9rem", borderRadius: msg.role==="user" ? "18px 4px 18px 18px" : "4px 18px 18px 18px", background: msg.role==="user" ? `rgba(${m.glowRGB},0.15)` : "rgba(255,255,255,0.04)", border: msg.role==="user" ? `1px solid rgba(${m.glowRGB},0.25)` : "1px solid rgba(255,255,255,0.07)", backdropFilter:"blur(10px)", wordBreak:"break-word", whiteSpace:"pre-wrap" }}>
                     {msg.content}
@@ -364,7 +376,17 @@ export default function App() {
         </div>
 
         {/* INPUT AREA */}
-        <div style={{ padding:"0.8rem clamp(0.8rem, 4vw, 3rem) max(1.2rem, env(safe-area-inset-bottom, 1.2rem))", backdropFilter:"blur(20px)", background:"rgba(7,7,15,0.7)", borderTop:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+        <div style={{
+          paddingTop:"0.8rem",
+          paddingLeft:"clamp(0.8rem, 4vw, 3rem)",
+          paddingRight:"clamp(0.8rem, 4vw, 3rem)",
+          paddingBottom:"max(calc(env(safe-area-inset-bottom) + 0.8rem), 1.2rem)",
+          backdropFilter:"blur(20px)",
+          WebkitBackdropFilter:"blur(20px)",
+          background:"rgba(7,7,15,0.7)",
+          borderTop:"1px solid rgba(255,255,255,0.05)",
+          flexShrink:0
+        }}>
           <div className="input-container" style={{ maxWidth:"680px", margin:"0 auto" }}>
             <ElectricBorder
               color={m.borderColor}
@@ -380,12 +402,12 @@ export default function App() {
                 </button>
               </div>
             </ElectricBorder>
-            <div style={{ textAlign:"center", color:"rgba(255,255,255,0.2)", fontSize:"0.68rem", marginTop:"0.6rem", letterSpacing:"0.05em" }}>AURA changes mood based on your question ✦ shift+enter for new line</div>
           </div>
         </div>
       </div>
-    {/* PEEKING CREATURE */}
-    <PeekingCreature glowRGB={m.glowRGB} borderColor={m.borderColor} />
+
+      {/* PEEKING CREATURE */}
+      <PeekingCreature glowRGB={m.glowRGB} borderColor={m.borderColor} />
     </div>
   );
 }

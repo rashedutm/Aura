@@ -2,11 +2,14 @@
 
 html, body, #root {
   height: 100%;
+  height: -webkit-fill-available;
+  min-height: 100dvh;
   overflow: hidden;
   font-family: 'DM Sans', sans-serif;
   color: #e8e8f0;
   background: #07070f;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar { width: 3px; }
@@ -27,7 +30,7 @@ html, body, #root {
   0%   { transform: translateY(0) rotate(0deg) scale(0.8); opacity: 0; }
   8%   { opacity: 1; }
   92%  { opacity: 0.6; }
-  100% { transform: translateY(-110vh) rotate(380deg) scale(1.2); opacity: 0; }
+  100% { transform: translateY(-110dvh) rotate(380deg) scale(1.2); opacity: 0; }
 }
 @keyframes bgPulse {
   0%   { filter: brightness(1) saturate(1); }
@@ -47,72 +50,62 @@ html, body, #root {
 }
 
 /* ── RESPONSIVE CHAT WIDTH ── */
-
-/* tablet landscape and small laptop */
 @media (min-width: 768px) and (orientation: landscape) {
-  .chat-container, .input-container {
-    max-width: 88vw !important;
-  }
+  .chat-container, .input-container { max-width: 88vw !important; }
 }
-
-/* laptop */
 @media (min-width: 1024px) {
-  .chat-container, .input-container {
-    max-width: 72vw !important;
-  }
+  .chat-container, .input-container { max-width: 72vw !important; }
 }
-
-/* large laptop / desktop */
 @media (min-width: 1280px) {
-  .chat-container, .input-container {
-    max-width: 64vw !important;
-  }
+  .chat-container, .input-container { max-width: 64vw !important; }
 }
-
-/* wide monitor */
 @media (min-width: 1600px) {
-  .chat-container, .input-container {
-    max-width: 55vw !important;
-  }
+  .chat-container, .input-container { max-width: 55vw !important; }
 }
 
-/* ── TABLET INPUT FIX ── */
-@media (min-width: 600px) and (max-width: 1023px) {
-  /* ensure input area never goes off screen on tablet */
-  .input-area-fix {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom)) !important;
-  }
-}
+/* electric border fix */
+.electric-border { overflow: visible !important; }
 
-/* fix electric border overflow on small screens */
-.electric-border {
-  overflow: visible !important;
-}
-
-/* auth screen on small phone - make rings smaller/dimmer */
+/* phone magic rings dim */
 @media (max-width: 480px) {
-  .magic-rings-container {
-    opacity: 0.5;
+  .magic-rings-container { opacity: 0.5; }
+}
+
+/* safe area padding for notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* safari -webkit-fill-available fallback */
+@supports (-webkit-touch-callout: none) {
+  html, body, #root {
+    height: -webkit-fill-available;
   }
 }
 
 /* ── HEADER SCROLL BEHAVIOR ── */
-/* ensure header transition works smoothly on all browsers */
 .app-header {
   -webkit-transform: translateY(0);
+     -moz-transform: translateY(0);
+      -ms-transform: translateY(0);
           transform: translateY(0);
-  -webkit-transition: -webkit-transform 0.3s cubic-bezier(0.4,0,0.2,1);
-          transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-  will-change: transform;
-  /* prevent layout shift on safari */
+  -webkit-transition: -webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1);
+     -moz-transition: -moz-transform 0.28s cubic-bezier(0.4,0,0.2,1);
+          transition: transform 0.28s cubic-bezier(0.4,0,0.2,1),
+                      -webkit-transform 0.28s cubic-bezier(0.4,0,0.2,1);
   -webkit-backface-visibility: hidden;
           backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+          perspective: 1000px;
+  will-change: transform;
 }
 
-/* on larger screens always show header - only hide on small screens */
+/* tablet/laptop/desktop — header always visible */
 @media (min-width: 768px) {
   .app-header {
-    transform: translateY(0) !important;
     -webkit-transform: translateY(0) !important;
+       -moz-transform: translateY(0) !important;
+        -ms-transform: translateY(0) !important;
+            transform: translateY(0) !important;
   }
 }
