@@ -510,5 +510,35 @@ app.get('/admin/stats', adminAuth, async (req, res) => {
   });
 });
 
+
+// ── ADMIN: get conversations for a user ──
+app.get('/admin/users/:id/conversations', adminAuth, async (req, res) => {
+  const result = await pool.query(`
+    SELECT c.id, c.title, c.created_at,
+      COUNT(m.id)::int as msg_count
+    FROM conversations c
+    LEFT JOIN messages m ON m.conversation_id = c.id
+    WHERE c.user_id = $1
+    GROUP BY c.id
+    ORDER BY c.created_at DESC
+  `, [req.params.id]);
+  res.json(result.rows);
+});
+
+// ── ADMIN: get messages for a conversation ──
+app.get('/admin/conversations/:id/messages', adminAuth, async (req, res) => {
+  const result = await pool.query(
+    'SELECT role, content, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+    [req.params.id]
+  );
+  res.json(result.rows);
+});
+
+// ── ADMIN: delete single conversation ──
+app.delete('/admin/conversations/:id', adminAuth, async (req, res) => {
+  await pool.query('DELETE FROM conversations WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 AURA backend running on port ${PORT}`));

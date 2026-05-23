@@ -3,20 +3,16 @@ import { useState, useEffect, useCallback } from "react";
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function AdminDashboard() {
-  const [key,        setKey]        = useState(localStorage.getItem("admin_key") || "");
-  const [authed,     setAuthed]     = useState(false);
-  const [users,      setUsers]      = useState([]);
-  const [stats,      setStats]      = useState(null);
-  const [loading,    setLoading]    = useState(false);
-  const [msg,        setMsg]        = useState("");
-  const [keyInput,   setKeyInput]   = useState("");
-  const [expanded,   setExpanded]   = useState({}); // userId -> bool
-  const [userChats,  setUserChats]  = useState({}); // userId -> [conv]
-  const [chatsLoading, setChatsLoading] = useState({}); // userId -> bool
-
-  const headers = { "Content-Type": "application/json", "x-admin-key": key };
+  const [key,     setKey]     = useState(localStorage.getItem("admin_key") || "");
+  const [authed,  setAuthed]  = useState(false);
+  const [users,   setUsers]   = useState([]);
+  const [stats,   setStats]   = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [msg,     setMsg]     = useState("");
+  const [keyInput, setKeyInput] = useState("");
 
   const fetchData = useCallback(async () => {
+    const headers = { "Content-Type": "application/json", "x-admin-key": key };
     setLoading(true);
     try {
       const [u, s] = await Promise.all([
@@ -38,27 +34,8 @@ export default function AdminDashboard() {
     if (key) fetchData();
   }, [key, fetchData]);
 
-  // fetch individual user's conversations
-  const fetchUserChats = useCallback(async (userId) => {
-    setChatsLoading(prev => ({ ...prev, [userId]: true }));
-    try {
-      const convs = await fetch(`${API}/admin/users/${userId}/conversations`, { headers }).then(r => r.json());
-      setUserChats(prev => ({ ...prev, [userId]: Array.isArray(convs) ? convs : [] }));
-    } catch {
-      setUserChats(prev => ({ ...prev, [userId]: [] }));
-    }
-    setChatsLoading(prev => ({ ...prev, [userId]: false }));
-  }, [key]);
-
-  const toggleExpand = (userId) => {
-    const isOpen = expanded[userId];
-    setExpanded(prev => ({ ...prev, [userId]: !isOpen }));
-    if (!isOpen && !userChats[userId]) {
-      fetchUserChats(userId);
-    }
-  };
-
   const deleteUser = async (id, username) => {
+    const headers = { "Content-Type": "application/json", "x-admin-key": key };
     if (!window.confirm(`Delete user "${username}" and ALL their data permanently?`)) return;
     await fetch(`${API}/admin/users/${id}`, { method: "DELETE", headers });
     setMsg(`✅ Deleted user "${username}"`);
@@ -66,30 +43,15 @@ export default function AdminDashboard() {
   };
 
   const deleteChats = async (id, username) => {
+    const headers = { "Content-Type": "application/json", "x-admin-key": key };
     if (!window.confirm(`Delete ALL chats for "${username}"? User account stays.`)) return;
     await fetch(`${API}/admin/users/${id}/chats`, { method: "DELETE", headers });
     setMsg(`✅ Cleared chats for "${username}"`);
-    setUserChats(prev => ({ ...prev, [id]: [] }));
     fetchData();
   };
 
-  const deleteConv = async (userId, convId, convTitle) => {
-    if (!window.confirm(`Delete conversation "${convTitle}"?`)) return;
-    await fetch(`${API}/admin/conversations/${convId}`, { method: "DELETE", headers });
-    setMsg(`✅ Deleted conversation "${convTitle}"`);
-    setUserChats(prev => ({
-      ...prev,
-      [userId]: (prev[userId] || []).filter(c => c.id !== convId)
-    }));
-    // update msg count in users list
-    setUsers(prev => prev.map(u => u.id === userId
-      ? { ...u, conv_count: Math.max(0, u.conv_count - 1) }
-      : u
-    ));
-  };
-
-  const s = {
-    page:    { minHeight: "100dvh", background: "#07070f", color: "#e8e8f0", fontFamily: "DM Sans, sans-serif", padding: "2rem" },
+  const s = { // styles
+    page:    { minHeight: "100vh", background: "#07070f", color: "#e8e8f0", fontFamily: "DM Sans, sans-serif", padding: "2rem" },
     title:   { fontFamily: "Syne, sans-serif", fontSize: "2rem", fontWeight: 800, letterSpacing: "0.1em", background: "linear-gradient(135deg,#fff,#7c6aff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "2rem" },
     card:    { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem" },
     stat:    { display: "inline-block", background: "rgba(124,106,255,0.15)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: "10px", padding: "0.8rem 1.5rem", marginRight: "1rem", marginBottom: "0.5rem", textAlign: "center" },
@@ -125,12 +87,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {msg && (
-          <div style={{ background: "rgba(124,106,255,0.1)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: "10px", padding: "0.8rem 1rem", marginBottom: "1.5rem", fontSize: "0.88rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>{msg}</span>
-            <span onClick={() => setMsg("")} style={{ cursor: "pointer", opacity: 0.5, fontSize: "1rem" }}>×</span>
-          </div>
-        )}
+        {msg && <div style={{ background: "rgba(124,106,255,0.1)", border: "1px solid rgba(124,106,255,0.3)", borderRadius: "10px", padding: "0.8rem 1rem", marginBottom: "1.5rem", fontSize: "0.88rem" }}>{msg}</div>}
 
         {/* STATS */}
         {stats && (
@@ -157,69 +114,33 @@ export default function AdminDashboard() {
           </div>
           {loading && <div style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.88rem" }}>Loading...</div>}
           {users.map(u => (
-            <div key={u.id}>
-              {/* USER ROW */}
-              <div style={s.row}>
-                <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "linear-gradient(135deg,#7c6aff,#c084fc)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne,sans-serif", fontWeight: 800, fontSize: "0.75rem", color: "#fff", flexShrink: 0 }}>
-                  {u.username[0].toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{u.username}</div>
-                  <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }}>
-                    {u.conv_count} chats · {u.msg_count} messages · joined {new Date(u.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                {/* expand chats button */}
-                <button
-                  style={{ ...s.btn, background: expanded[u.id] ? "rgba(124,106,255,0.25)" : "rgba(124,106,255,0.1)", color: "#a78bfa", minWidth: "90px" }}
-                  onClick={() => toggleExpand(u.id)}
-                >
-                  {expanded[u.id] ? "▲ Chats" : "▼ Chats"}
-                </button>
-                <button
-                  style={{ ...s.btn, background: "rgba(255,140,0,0.15)", color: "#ffaa44" }}
-                  onClick={() => deleteChats(u.id, u.username)}
-                  title="Delete all chats, keep account"
-                >
-                  Clear All
-                </button>
-                <button
-                  style={{ ...s.btn, background: "rgba(255,60,60,0.15)", color: "#ff6b6b" }}
-                  onClick={() => deleteUser(u.id, u.username)}
-                  title="Delete user and all their data"
-                >
-                  Delete User
-                </button>
+            <div key={u.id} style={s.row}>
+              {/* avatar */}
+              <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "linear-gradient(135deg,#7c6aff,#c084fc)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Syne,sans-serif", fontWeight: 800, fontSize: "0.75rem", color: "#fff", flexShrink: 0 }}>
+                {u.username[0].toUpperCase()}
               </div>
-
-              {/* CONVERSATIONS PANEL */}
-              {expanded[u.id] && (
-                <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: "10px", margin: "0 0 0.5rem 2.5rem", padding: "0.5rem 0.75rem", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  {chatsLoading[u.id] && (
-                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.82rem", padding: "0.5rem 0" }}>Loading chats...</div>
-                  )}
-                  {!chatsLoading[u.id] && (userChats[u.id] || []).length === 0 && (
-                    <div style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.82rem", padding: "0.5rem 0" }}>No conversations</div>
-                  )}
-                  {(userChats[u.id] || []).map(conv => (
-                    <div key={conv.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <span style={{ fontSize: "0.85rem", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.7)" }}>
-                        💬 {conv.title}
-                      </span>
-                      <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>
-                        {conv.msg_count != null ? `${conv.msg_count} msgs` : ""}
-                        {conv.updated_at ? ` · ${new Date(conv.updated_at).toLocaleDateString()}` : ""}
-                      </span>
-                      <button
-                        style={{ ...s.btn, background: "rgba(255,60,60,0.12)", color: "#ff6b6b", padding: "0.3rem 0.7rem", flexShrink: 0 }}
-                        onClick={() => deleteConv(u.id, conv.id, conv.title)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
+              {/* info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{u.username}</div>
+                <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }}>
+                  {u.conv_count} chats · {u.msg_count} messages · joined {new Date(u.created_at).toLocaleDateString()}
                 </div>
-              )}
+              </div>
+              {/* actions */}
+              <button
+                style={{ ...s.btn, background: "rgba(255,140,0,0.15)", color: "#ffaa44" }}
+                onClick={() => deleteChats(u.id, u.username)}
+                title="Delete chats only, keep account"
+              >
+                Clear Chats
+              </button>
+              <button
+                style={{ ...s.btn, background: "rgba(255,60,60,0.15)", color: "#ff6b6b" }}
+                onClick={() => deleteUser(u.id, u.username)}
+                title="Delete user and all their data"
+              >
+                Delete User
+              </button>
             </div>
           ))}
           {users.length === 0 && !loading && (
