@@ -87,6 +87,9 @@ export default function App() {
   useEffect(() => {
     const el = chatRef.current;
     if (!el) return;
+    // reset on mount so fresh load always starts with header visible
+    lastScrollY.current = el.scrollTop;
+    setHeaderVisible(true);
     const onScroll = () => {
       const curr = el.scrollTop;
       const diff = curr - lastScrollY.current;
